@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
 function App() {
   const [selectedDir, setSelectedDir] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLastDirectory = async () => {
+      try {
+        const lastDir = await window.electronAPI.getLastDirectory();
+        if (lastDir) {
+          setSelectedDir(lastDir);
+        }
+      } catch (error) {
+        console.error('Error loading last directory:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLastDirectory();
+  }, []);
 
   const handleSelectDirectory = async () => {
     try {
@@ -36,7 +54,7 @@ function App() {
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#4fa8c7')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = '#61dafb')}
           >
-            Select Directory
+            {isLoading ? 'Loading...' : 'Select Directory'}
           </button>
           {selectedDir && (
             <div style={{ 
