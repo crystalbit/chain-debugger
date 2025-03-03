@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
@@ -31,6 +31,17 @@ function createWindow(): void {
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
+
+  // Handle directory selection
+  ipcMain.handle('select-directory', async () => {
+    if (!mainWindow) return null;
+    
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    });
+    
+    return result.canceled ? null : result.filePaths[0];
+  });
 
   // Quit the app when the window is closed
   mainWindow.on('closed', () => {
