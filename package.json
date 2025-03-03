@@ -12,10 +12,8 @@
     "public/storage.ts"
   ],
   "dependencies": {
+    "electron": "^34.3.0",
     "electron-is-dev": "^3.0.1"
-  },
-  "optionalDependencies": {
-    "electron": "^34.3.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -31,7 +29,8 @@
     "preelectron-pack": "yarn build",
     "prepack": "yarn build",
     "prepare": "npm run build",
-    "preinstall": "node -e \"process.exit(0)\""
+    "preinstall": "node -e \"process.exit(0)\"",
+    "postinstall": "electron-builder install-app-deps"
   },
   "bin": {
     "fluence-test": "./build/bin/cli.js"
