@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -6,10 +6,19 @@ import {
   Typography,
   Box,
   Paper,
-  Chip
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider
 } from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
-import { JsonFile } from '../types';
+import {
+  ChevronLeft as ChevronLeftIcon,
+  SwapHoriz as TransferIcon,
+  Code as TransactionIcon
+} from '@mui/icons-material';
+import { JsonFile, TestCase, Step } from '../types';
 
 interface TestCaseViewerProps {
   file: JsonFile;
@@ -17,6 +26,67 @@ interface TestCaseViewerProps {
 }
 
 export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
+  const [testCase, setTestCase] = useState<TestCase | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTestCase = async () => {
+      try {
+        const response = await fetch(`file://${file.path}`);
+        const data = await response.json();
+        setTestCase(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load test case');
+        console.error('Error loading test case:', err);
+      }
+    };
+
+    loadTestCase();
+  }, [file.path]);
+
+  const renderStep = (step: Step) => {
+    const isTransfer = step.type === 'transfer';
+    
+    return (
+      <ListItem>
+        <ListItemIcon>
+          {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
+        </ListItemIcon>
+        <ListItemText
+          primary={step.name}
+          secondary={
+            <React.Fragment>
+              <Typography component="span" variant="body2" color="text.primary">
+                From: {step.from}
+              </Typography>
+              <br />
+              <Typography component="span" variant="body2" color="text.primary">
+                To: {step.to}
+              </Typography>
+              <br />
+              {isTransfer ? (
+                <Typography component="span" variant="body2" color="text.primary">
+                  Value: {step.value}
+                </Typography>
+              ) : (
+                <>
+                  <Typography component="span" variant="body2" color="text.primary">
+                    Signature: {step.signature}
+                  </Typography>
+                  <br />
+                  <Typography component="span" variant="body2" color="text.primary">
+                    Arguments: {step.arguments}
+                  </Typography>
+                </>
+              )}
+            </React.Fragment>
+          }
+        />
+      </ListItem>
+    );
+  };
+
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppBar position="static" elevation={0}>
@@ -43,9 +113,36 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
         </Toolbar>
       </AppBar>
       <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
-        <Paper elevation={2} sx={{ p: 3 }}>
-          {/* Content will be added here */}
-        </Paper>
+        {error ? (
+          <Paper elevation={2} sx={{ p: 3, bgcolor: 'error.dark' }}>
+            <Typography color="error">{error}</Typography>
+          </Paper>
+        ) : testCase ? (
+          <Paper elevation={2} sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Configuration
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3 }}>
+              RPC URL: {testCase.config.rpcUrl}
+            </Typography>
+            
+            <Typography variant="h6" gutterBottom>
+              Steps
+            </Typography>
+            <List>
+              {testCase.steps.map((step, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <Divider />}
+                  {renderStep(step)}
+                </React.Fragment>
+              ))}
+            </List>
+          </Paper>
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <Typography>Loading...</Typography>
+          </Box>
+        )}
       </Box>
     </Box>
   );

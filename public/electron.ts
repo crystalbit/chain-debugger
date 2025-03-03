@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
+import type { ProtocolRequest, ProtocolCallback } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -37,6 +38,7 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
@@ -52,6 +54,19 @@ function createWindow(): void {
     mainWindow = null;
   });
 }
+
+// Register protocol handler for local files
+app.whenReady().then(() => {
+  protocol.registerFileProtocol('file', (request: any, callback: any) => {
+    const filePath = decodeURIComponent(request.url.replace('file://', ''));
+    try {
+      return callback(filePath);
+    } catch (error) {
+      console.error('Error handling file protocol:', error);
+      return callback({ error: -2 });
+    }
+  });
+});
 
 // IPC handlers
 ipcMain.handle('select-directory', async () => {
