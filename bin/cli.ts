@@ -6,21 +6,22 @@ import * as fs from 'fs';
 
 async function installElectron(): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = path.join(process.env.HOME || process.env.USERPROFILE || '', '.fluence-test');
-    const electronPath = path.join(tempDir, 'node_modules', 'electron');
+    const projectRoot = path.resolve(__dirname, '..');
+    const electronPath = path.join(projectRoot, 'node_modules', 'electron');
 
-    if (fs.existsSync(path.join(electronPath, 'package.json'))) {
-      resolve(require(electronPath));
-      return;
-    }
-
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    // Create a temporary package.json if it doesn't exist
+    const tempPackageJsonPath = path.join(projectRoot, 'package.json');
+    if (!fs.existsSync(tempPackageJsonPath)) {
+      fs.writeFileSync(tempPackageJsonPath, JSON.stringify({
+        name: 'temp-electron-install',
+        version: '1.0.0',
+        private: true
+      }));
     }
 
     const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const install = spawn(npm, ['install', 'electron@34.3.0'], {
-      cwd: tempDir,
+    const install = spawn(npm, ['install', 'electron@34.3.0', '--no-save'], {
+      cwd: projectRoot,
       stdio: 'inherit'
     });
 
