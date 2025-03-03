@@ -50,7 +50,6 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    app.quit();
   });
 }
 
@@ -71,9 +70,30 @@ ipcMain.handle('get-last-directory', () => {
   return storage.get('lastSelectedDirectory');
 });
 
+// List JSON files in directory
+ipcMain.handle('list-json-files', async (_, dirPath: string) => {
+  try {
+    const files = fs.readdirSync(dirPath);
+    return files
+      .filter(file => file.toLowerCase().endsWith('.json'))
+      .map(file => ({
+        name: file,
+        path: path.join(dirPath, file),
+        size: fs.statSync(path.join(dirPath, file)).size
+      }));
+  } catch (error) {
+    console.error('Error listing JSON files:', error);
+    return [];
+  }
+});
+
 // App lifecycle
 app.on('ready', createWindow);
-app.on('window-all-closed', () => app.quit());
+
+app.on('window-all-closed', () => {
+  app.quit();
+});
+
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();

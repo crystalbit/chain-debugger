@@ -1,6 +1,6 @@
 {
   "name": "fluence-test",
-  "version": "1.0.49",
+  "version": "1.0.54",
   "main": "build/electron.js",
   "homepage": "./",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build && tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc public/preload.ts --outDir build --module commonjs --esModuleInterop true && tsc bin/cli.ts --outDir build/bin --module commonjs --esModuleInterop true --skipLibCheck",
     "eject": "react-scripts eject",
-    "electron-dev": "tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && concurrently \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-dev": "tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && concurrently -k \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-pack": "electron-builder -c.extraMetadata.main=build/electron.js",
     "preelectron-pack": "yarn build",
     "prepack": "yarn build",
