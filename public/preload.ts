@@ -3,18 +3,15 @@ import { contextBridge, ipcRenderer } from 'electron';
 interface JsonFile {
   name: string;
   path: string;
-  size: number;
+  stepCount: number | 'error';
 }
 
-contextBridge.exposeInMainWorld('electronAPI', {
+const electronAPI = {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   getLastDirectory: () => ipcRenderer.invoke('get-last-directory'),
-  listJsonFiles: (dirPath: string) => ipcRenderer.invoke('list-json-files', dirPath)
-});
+  listJsonFiles: (dirPath: string): Promise<JsonFile[]> => ipcRenderer.invoke('list-json-files', dirPath),
+};
 
-// TypeScript interface for the exposed API
-export interface ElectronAPI {
-  selectDirectory: () => Promise<string | null>;
-  getLastDirectory: () => Promise<string | null>;
-  listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
-} 
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+
+export type ElectronAPI = typeof electronAPI; 

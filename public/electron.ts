@@ -76,11 +76,25 @@ ipcMain.handle('list-json-files', async (_, dirPath: string) => {
     const files = fs.readdirSync(dirPath);
     return files
       .filter(file => file.toLowerCase().endsWith('.json'))
-      .map(file => ({
-        name: file,
-        path: path.join(dirPath, file),
-        size: fs.statSync(path.join(dirPath, file)).size
-      }));
+      .map(file => {
+        const filePath = path.join(dirPath, file);
+        try {
+          const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          const steps = content.steps;
+          const stepCount = Array.isArray(steps) ? steps.length : 'error';
+          return {
+            name: file,
+            path: filePath,
+            stepCount
+          };
+        } catch (error) {
+          return {
+            name: file,
+            path: filePath,
+            stepCount: 'error'
+          };
+        }
+      });
   } catch (error) {
     console.error('Error listing JSON files:', error);
     return [];
