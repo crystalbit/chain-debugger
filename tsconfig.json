@@ -14,10 +14,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "baseUrl": "src",
+    "baseUrl": ".",
     "outDir": "build",
-    "noEmit": false
+    "noEmit": false,
+    "rootDir": ".",
+    "types": ["node", "electron"]
   },
-  "include": ["src", "public/electron.ts", "bin/cli.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "public/**/*", "bin/**/*"],
+  "exclude": ["node_modules", "build"]
 } 

@@ -13,13 +13,16 @@ import {
   ListItemIcon,
   Divider,
   Card,
-  CardContent
+  CardContent,
+  Button,
+  CircularProgress
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
   SwapHoriz as TransferIcon,
   Code as TransactionIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  PlayArrow as PlayIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 
@@ -31,6 +34,7 @@ interface TestCaseViewerProps {
 export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   useEffect(() => {
     const loadTestCase = async () => {
@@ -47,6 +51,24 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
 
     loadTestCase();
   }, [file.path]);
+
+  const handleSimulate = async () => {
+    if (!testCase) return;
+    
+    setIsSimulating(true);
+    try {
+      await window.electronAPI.simulateTestCase(file.path);
+      // Reload the test case to show updated results
+      const content = await window.electronAPI.readFile(file.path);
+      const data = JSON.parse(content);
+      setTestCase(data);
+    } catch (err) {
+      setError('Simulation failed');
+      console.error('Error during simulation:', err);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
 
   const renderStep = (step: Step) => {
     const isTransfer = step.type === 'transfer';
@@ -83,6 +105,22 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                   </Typography>
                 </>
               )}
+              {step.trace && (
+                <>
+                  <br />
+                  <Typography component="span" variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                    Trace: {step.trace}
+                  </Typography>
+                </>
+              )}
+              {step.result && (
+                <>
+                  <br />
+                  <Typography component="span" variant="body2" color="error" sx={{ whiteSpace: 'pre-wrap' }}>
+                    Error: {step.result}
+                  </Typography>
+                </>
+              )}
             </React.Fragment>
           }
         />
@@ -110,9 +148,18 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
               label={`${file.stepCount} ${file.stepCount === 1 ? 'step' : 'steps'}`}
               color="primary"
               size="small"
-              sx={{ ml: 2 }}
+              sx={{ mr: 2 }}
             />
           )}
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={isSimulating ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
+            onClick={handleSimulate}
+            disabled={isSimulating || !testCase}
+          >
+            {isSimulating ? 'Simulating...' : 'Simulate'}
+          </Button>
         </Toolbar>
       </AppBar>
       <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>

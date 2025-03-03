@@ -1,9 +1,16 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
+import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execAnvilFork, terminateAnvil, PORT } from '../src/blockchain/fork-work';
+import { execCommand } from '../src/blockchain/exec-cast';
+import { getResultData } from '../src/blockchain/parser';
+import { Step } from '../src/types';
+import { main as simulateTestCase } from '../src/blockchain/simulation';
 
 const isDev = process.env.NODE_ENV !== 'production';
-let mainWindow: typeof BrowserWindow | null = null;
+
+let mainWindow: BrowserWindow | null = null;
 
 // Simple storage implementation
 const storagePath = path.join(app.getPath('userData'), 'storage.json');
@@ -30,23 +37,22 @@ const storage = {
   }
 };
 
-function createWindow(): void {
+function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 680,
+    width: 1200,
+    height: 800,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      webSecurity: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:3000';
-  mainWindow.loadURL(startUrl);
-
   if (isDev) {
+    mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadURL(`file://${path.join(__dirname, '../build/index.html')}`);
   }
 
   mainWindow.on('closed', () => {
@@ -54,8 +60,8 @@ function createWindow(): void {
   });
 }
 
-// Register protocol handler for local files
-app.whenReady().then(() => {
+function registerHandlers() {
+  // Register protocol handler for local files
   protocol.registerFileProtocol('file', (request: any, callback: any) => {
     const filePath = decodeURIComponent(request.url.replace('file://', ''));
     try {
@@ -65,79 +71,103 @@ app.whenReady().then(() => {
       return callback({ error: -2 });
     }
   });
-});
 
-// IPC handlers
-ipcMain.handle('select-directory', async () => {
-  if (!mainWindow) return null;
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory']
+  // Register IPC handlers
+  ipcMain.handle('simulate-test-case', async (_event: IpcMainInvokeEvent, filePath: string) => {
+    try {
+      // Save the current working directory
+      const originalCwd = process.cwd();
+      
+      // Change to the directory containing the test case
+      process.chdir(path.dirname(filePath));
+      
+      try {
+        await simulateTestCase();
+        return true;
+      } finally {
+        // Restore the original working directory
+        process.chdir(originalCwd);
+      }
+    } catch (error) {
+      console.error('Simulation failed:', error);
+      throw error;
+    }
   });
-  const selectedPath = result.canceled ? null : result.filePaths[0];
-  if (selectedPath) {
-    storage.set('lastSelectedDirectory', selectedPath);
-  }
-  return selectedPath;
-});
 
-ipcMain.handle('get-last-directory', () => {
-  return storage.get('lastSelectedDirectory');
-});
+  ipcMain.handle('select-directory', async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    });
+    const selectedPath = result.canceled ? null : result.filePaths[0];
+    if (selectedPath) {
+      storage.set('lastSelectedDirectory', selectedPath);
+    }
+    return selectedPath;
+  });
 
-// List JSON files in directory
-ipcMain.handle('list-json-files', async (_: any, dirPath: string) => {
-  try {
-    const files = fs.readdirSync(dirPath);
-    return files
-      .filter(file => file.toLowerCase().endsWith('.json'))
-      .map(file => {
-        const filePath = path.join(dirPath, file);
-        try {
-          const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          const steps = content.steps;
-          const stepCount = Array.isArray(steps) ? steps.length : 'error';
-          return {
-            name: file,
-            path: filePath,
-            stepCount
-          };
-        } catch (error) {
-          return {
-            name: file,
-            path: filePath,
-            stepCount: 'error'
-          };
-        }
-      });
-  } catch (error) {
-    console.error('Error listing JSON files:', error);
-    return [];
-  }
-});
+  ipcMain.handle('get-last-directory', () => {
+    return storage.get('lastSelectedDirectory');
+  });
 
-ipcMain.handle('read-test-case', async (_: any, filePath: string) => {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.error('Error reading test case:', error);
-    throw error;
-  }
-});
+  ipcMain.handle('list-json-files', async (_: any, dirPath: string) => {
+    try {
+      const files = fs.readdirSync(dirPath);
+      return files
+        .filter(file => file.toLowerCase().endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(dirPath, file);
+          try {
+            const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            const steps = content.steps;
+            const stepCount = Array.isArray(steps) ? steps.length : 'error';
+            return {
+              name: file,
+              path: filePath,
+              stepCount
+            };
+          } catch (error) {
+            return {
+              name: file,
+              path: filePath,
+              stepCount: 'error'
+            };
+          }
+        });
+    } catch (error) {
+      console.error('Error listing JSON files:', error);
+      return [];
+    }
+  });
 
-ipcMain.handle('read-file', async (_: any, filePath: string) => {
-  try {
-    return fs.readFileSync(filePath, 'utf-8');
-  } catch (error) {
-    console.error('Error reading file:', error);
-    throw error;
-  }
-});
+  ipcMain.handle('read-test-case', async (_: any, filePath: string) => {
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Error reading test case:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('read-file', async (_: any, filePath: string) => {
+    try {
+      return fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.error('Error reading file:', error);
+      throw error;
+    }
+  });
+}
 
 // App lifecycle
-app.on('ready', createWindow);
+app.whenReady().then(() => {
+  registerHandlers();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
+  terminateAnvil(); // Ensure Anvil is terminated when app closes
   app.quit();
 });
 

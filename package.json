@@ -1,7 +1,7 @@
 {
   "name": "fluence-test",
   "version": "1.0.57",
-  "main": "build/electron.js",
+  "main": "build/public/electron.js",
   "homepage": "./",
   "license": "MIT",
   "files": [
@@ -20,6 +20,7 @@
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
+    "@types/electron": "^1.6.12",
     "@types/node": "22.13.8",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
@@ -35,7 +36,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build && tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc public/preload.ts --outDir build --module commonjs --esModuleInterop true && tsc bin/cli.ts --outDir build/bin --module commonjs --esModuleInterop true --skipLibCheck",
     "eject": "react-scripts eject",
-    "electron-dev": "tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc public/preload.ts --outDir build --module commonjs --esModuleInterop true && concurrently -k \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-dev": "rm -rf build && yarn tsc --project tsconfig.json && concurrently -k \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-pack": "electron-builder -c.extraMetadata.main=build/electron.js",
     "preelectron-pack": "yarn build",
     "prepack": "yarn build",

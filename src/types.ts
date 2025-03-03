@@ -4,15 +4,21 @@ export interface JsonFile {
   stepCount: number | 'error';
 }
 
-export interface TestConfig {
+export interface Config {
   rpcUrl: string;
 }
 
-export interface BaseStep {
+export interface TestCase {
+  config: Config;
+  steps: Step[];
+}
+
+interface BaseStep {
   name: string;
-  type: 'transfer' | 'transaction';
   from: string;
   to: string;
+  trace?: string;
+  result?: string;
 }
 
 export interface TransferStep extends BaseStep {
@@ -26,9 +32,4 @@ export interface TransactionStep extends BaseStep {
   arguments: string;
 }
 
-export type Step = TransferStep | TransactionStep;
-
-export interface TestCase {
-  config: TestConfig;
-  steps: Step[];
-} 
+export type Step = TransferStep | TransactionStep; 

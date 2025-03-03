@@ -2220,6 +2220,13 @@
   dependencies:
     "@types/ms" "*"
 
+"@types/electron@^1.6.12":
+  version "1.6.12"
+  resolved "https://registry.yarnpkg.com/@types/electron/-/electron-1.6.12.tgz#0921813f95b92fdce9f642f85cb561318fcf0a04"
+  integrity sha512-NIJokDkGv9h+MStCL1IuiL1FOHYVkszoWeNxJtSI5dcEKRGbX83JcVYNAgk019qOQgJkHtz9WdP0CDXvrArrGg==
+  dependencies:
+    electron "*"
+
 "@types/eslint-scope@^3.7.7":
   version "3.7.7"
   resolved "https://registry.npmjs.org/@types/eslint-scope/-/eslint-scope-3.7.7.tgz"
@@ -4717,7 +4724,7 @@ electron-to-chromium@^1.5.73:
   resolved "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.109.tgz"
   integrity sha512-AidaH9JETVRr9DIPGfp1kAarm/W6hRJTPuCnkF+2MqhF4KaAgRIcBc8nvjk+YMXZhwfISof/7WG29eS4iGxQLQ==
 
-electron@34.3.0:
+electron@*, electron@34.3.0:
   version "34.3.0"
   resolved "https://registry.yarnpkg.com/electron/-/electron-34.3.0.tgz#d52a5bd14c72a5811a0c0e233db5c20ad70ba078"
   integrity sha512-I238qRnYTAsuwJ/rS7HGaFNY4NNKAcjX8nlj7mnNmj1TK3z4HvNoD1r7Zud81DYDFx8AITuLd76EPrEnnfF9Bg==
