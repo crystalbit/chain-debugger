@@ -86,47 +86,51 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <AppBar position="static" elevation={0}>
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Test Cases
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        <Container maxWidth="md" sx={{ py: 4 }}>
-          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Test Cases
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSelectDirectory}
-            >
-              Select Directory
-            </Button>
-          </Box>
+        {!selectedFile && (
+          <>
+            <AppBar position="static" elevation={0}>
+              <Toolbar>
+                <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                  Test Cases
+                </Typography>
+              </Toolbar>
+            </AppBar>
+            <Container maxWidth="md" sx={{ py: 4 }}>
+              <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                  Test Cases
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSelectDirectory}
+                >
+                  Select Directory
+                </Button>
+              </Box>
 
-          {selectedDirectory && (
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="body2" color="textSecondary">
-                Selected Directory: {selectedDirectory}
-              </Typography>
-            </Paper>
-          )}
+              {selectedDirectory && (
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="body2" color="textSecondary">
+                    Selected Directory: {selectedDirectory}
+                  </Typography>
+                </Paper>
+              )}
 
-          {selectedFile ? (
-            <TestCaseViewer
-              file={selectedFile}
-              onBack={() => setSelectedFile(null)}
-            />
-          ) : (
-            <TestCaseList
-              files={jsonFiles}
-              onSelect={setSelectedFile}
-            />
-          )}
-        </Container>
+              <TestCaseList
+                files={jsonFiles}
+                onSelect={setSelectedFile}
+              />
+            </Container>
+          </>
+        )}
+
+        {selectedFile && (
+          <TestCaseViewer
+            file={selectedFile}
+            onBack={() => setSelectedFile(null)}
+          />
+        )}
       </Box>
     </ThemeProvider>
   );

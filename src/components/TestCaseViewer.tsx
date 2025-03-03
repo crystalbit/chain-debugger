@@ -11,12 +11,15 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
   SwapHoriz as TransferIcon,
-  Code as TransactionIcon
+  Code as TransactionIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 
@@ -99,7 +102,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           >
             <ChevronLeftIcon />
           </IconButton>
-          <Typography variant="h6" component="div">
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {file.name.replace(/\.json$/, '')}
           </Typography>
           {file.stepCount !== 'error' && (
@@ -118,26 +121,35 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
             <Typography color="error">{error}</Typography>
           </Paper>
         ) : testCase ? (
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Configuration
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              RPC URL: {testCase.config.rpcUrl}
-            </Typography>
+          <>
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <SettingsIcon sx={{ mr: 1 }} color="primary" />
+                  <Typography variant="h6" component="div">
+                    Configuration
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  RPC URL: {testCase.config.rpcUrl}
+                </Typography>
+              </CardContent>
+            </Card>
             
-            <Typography variant="h6" gutterBottom>
-              Steps
-            </Typography>
-            <List>
-              {testCase.steps.map((step, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <Divider />}
-                  {renderStep(step)}
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Steps
+              </Typography>
+              <List>
+                {testCase.steps.map((step, index) => (
+                  <React.Fragment key={index}>
+                    {index > 0 && <Divider />}
+                    {renderStep(step)}
+                  </React.Fragment>
+                ))}
+              </List>
+            </Paper>
+          </>
         ) : (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <Typography>Loading...</Typography>
