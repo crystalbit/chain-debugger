@@ -32,8 +32,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   useEffect(() => {
     const loadTestCase = async () => {
       try {
-        const response = await fetch(`file://${file.path}`);
-        const data = await response.json();
+        const data = await window.electronAPI.readTestCase(file.path);
         setTestCase(data);
         setError(null);
       } catch (err) {

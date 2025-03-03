@@ -1,5 +1,4 @@
 const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
-import type { ProtocolRequest, ProtocolCallback } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -113,6 +112,16 @@ ipcMain.handle('list-json-files', async (_: any, dirPath: string) => {
   } catch (error) {
     console.error('Error listing JSON files:', error);
     return [];
+  }
+});
+
+ipcMain.handle('read-test-case', async (_: any, filePath: string) => {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error reading test case:', error);
+    throw error;
   }
 });
 

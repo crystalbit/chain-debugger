@@ -27,7 +27,7 @@ import {
 } from '@mui/icons-material';
 import { TestCaseViewer } from './components/TestCaseViewer';
 import { TestCaseList } from './components/TestCaseList';
-import { JsonFile } from './types';
+import { JsonFile, TestCase } from './types';
 
 declare global {
   interface Window {
@@ -35,6 +35,7 @@ declare global {
       selectDirectory: () => Promise<string | undefined>;
       getLastDirectory: () => Promise<string | undefined>;
       listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
+      readTestCase: (filePath: string) => Promise<TestCase>;
     };
   }
 }
