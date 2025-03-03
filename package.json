@@ -8,39 +8,27 @@
     "bin/",
     "build/",
     "public/electron.ts",
-    "public/preload.ts",
-    "public/storage.ts"
+    "public/preload.ts"
   ],
   "dependencies": {
-    "electron": "^34.3.0",
-    "electron-is-dev": "^3.0.1"
+    "electron": "34.3.0",
+    "electron-is-dev": "3.0.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.8",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "concurrently": "^9.1.2",
-    "electron-builder": "^25.1.8",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@types/node": "22.13.8",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "concurrently": "9.1.2",
+    "electron-builder": "25.1.8",
     "react-scripts": "5.0.1",
-    "typescript": "^5.8.2",
-    "wait-on": "^8.0.2",
-    "web-vitals": "^2.1.4"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "typescript": "5.8.2",
+    "wait-on": "8.0.2"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc public/preload.ts --outDir build --module commonjs --esModuleInterop true && tsc public/storage.ts --outDir build --module commonjs --esModuleInterop true && tsc bin/cli.ts --outDir build/bin --module commonjs --esModuleInterop true --skipLibCheck",
-    "test": "react-scripts test",
+    "build": "react-scripts build && tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc public/preload.ts --outDir build --module commonjs --esModuleInterop true && tsc bin/cli.ts --outDir build/bin --module commonjs --esModuleInterop true --skipLibCheck",
     "eject": "react-scripts eject",
     "electron-dev": "tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && concurrently \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-pack": "electron-builder -c.extraMetadata.main=build/electron.js",
