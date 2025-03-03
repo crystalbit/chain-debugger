@@ -1,12 +1,21 @@
 {
-  "name": "app",
-  "version": "0.1.0",
-  "private": true,
+  "name": "fluence-test",
+  "version": "1.0.28",
+  "main": "build/electron.js",
+  "homepage": "./",
+  "files": [
+    "bin/",
+    "build/",
+    "public/electron.ts"
+  ],
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "electron": "^34.3.0",
+    "electron-is-dev": "^3.0.1",
+    "typescript": "^5.8.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "5.0.1",
@@ -14,9 +23,18 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && tsc bin/cli.ts --outDir build/bin --module commonjs --esModuleInterop true --skipLibCheck",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron-dev": "tsc public/electron.ts --outDir build --module commonjs --esModuleInterop true && concurrently \"BROWSER=none yarn start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-pack": "electron-builder -c.extraMetadata.main=build/electron.js",
+    "preelectron-pack": "yarn build",
+    "prepack": "yarn build",
+    "prepare": "npm run build",
+    "postinstall": "electron-builder install-app-deps && chmod +x build/bin/cli.js"
+  },
+  "bin": {
+    "fluence-test": "./build/bin/cli.js"
   },
   "eslintConfig": {
     "extends": [
@@ -34,6 +52,33 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.8",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "concurrently": "^9.1.2",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.fluence.test-framework",
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "build",
+        "to": "build",
+        "filter": ["**/*"]
+      }
     ]
   }
 }
