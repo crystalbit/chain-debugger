@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
 
 interface JsonFile {
   name: string;
@@ -10,7 +10,7 @@ const electronAPI = {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   getLastDirectory: () => ipcRenderer.invoke('get-last-directory'),
   listJsonFiles: (dirPath: string): Promise<JsonFile[]> => ipcRenderer.invoke('list-json-files', dirPath),
-};
+} as const;
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 

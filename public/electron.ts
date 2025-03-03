@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 import * as path from 'path';
 import * as fs from 'fs';
 
 const isDev = process.env.NODE_ENV !== 'production';
-let mainWindow: BrowserWindow | null = null;
+let mainWindow: typeof BrowserWindow | null = null;
 
 // Simple storage implementation
 const storagePath = path.join(app.getPath('userData'), 'storage.json');
@@ -71,7 +71,7 @@ ipcMain.handle('get-last-directory', () => {
 });
 
 // List JSON files in directory
-ipcMain.handle('list-json-files', async (_, dirPath: string) => {
+ipcMain.handle('list-json-files', async (_: any, dirPath: string) => {
   try {
     const files = fs.readdirSync(dirPath);
     return files
