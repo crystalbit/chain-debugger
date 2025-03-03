@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-const { ipcRenderer } = window.require('electron');
-
 function App() {
   const [selectedDir, setSelectedDir] = useState<string | null>(null);
 
   const handleSelectDirectory = async () => {
     try {
-      const result = await ipcRenderer.invoke('select-directory');
+      const result = await window.electronAPI.selectDirectory();
       if (result) {
         setSelectedDir(result);
       }
