@@ -10,7 +10,7 @@ const electronAPI = {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   getLastDirectory: () => ipcRenderer.invoke('get-last-directory'),
   listJsonFiles: (dirPath: string): Promise<JsonFile[]> => ipcRenderer.invoke('list-json-files', dirPath),
-  readTestCase: (filePath: string) => ipcRenderer.invoke('read-test-case', filePath)
+  readFile: (filePath: string): Promise<string> => ipcRenderer.invoke('read-file', filePath)
 } as const;
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

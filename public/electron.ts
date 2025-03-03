@@ -125,6 +125,15 @@ ipcMain.handle('read-test-case', async (_: any, filePath: string) => {
   }
 });
 
+ipcMain.handle('read-file', async (_: any, filePath: string) => {
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch (error) {
+    console.error('Error reading file:', error);
+    throw error;
+  }
+});
+
 // App lifecycle
 app.on('ready', createWindow);
 

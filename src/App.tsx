@@ -35,7 +35,7 @@ declare global {
       selectDirectory: () => Promise<string | undefined>;
       getLastDirectory: () => Promise<string | undefined>;
       listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
-      readTestCase: (filePath: string) => Promise<TestCase>;
+      readFile: (filePath: string) => Promise<string>;
     };
   }
 }
