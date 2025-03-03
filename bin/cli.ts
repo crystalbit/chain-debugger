@@ -2,48 +2,41 @@
 
 import { spawn } from 'child_process';
 import * as path from 'path';
-import * as fs from 'fs';
 
-async function installElectron(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const projectRoot = path.resolve(__dirname, '..');
-    const electronPath = path.join(projectRoot, 'node_modules', 'electron');
+const projectRoot = path.resolve(__dirname, '..');
+const electronJsPath = path.join(projectRoot, 'build', 'electron.js');
+const indexHtmlPath = path.join(projectRoot, 'build', 'index.html');
 
-    // Create a temporary package.json if it doesn't exist
-    const tempPackageJsonPath = path.join(projectRoot, 'package.json');
-    if (!fs.existsSync(tempPackageJsonPath)) {
-      fs.writeFileSync(tempPackageJsonPath, JSON.stringify({
-        name: 'temp-electron-install',
-        version: '1.0.0',
-        private: true
-      }));
+// Try to find electron in various locations
+function findElectron(): string | null {
+  const paths = [
+    // Try local installation first
+    path.join(projectRoot, 'node_modules', '.bin', 'electron'),
+    // Then try global installation
+    '/usr/local/bin/electron',
+    // Add more paths as needed
+  ];
+
+  for (const electronPath of paths) {
+    try {
+      require('fs').accessSync(electronPath, require('fs').constants.X_OK);
+      return electronPath;
+    } catch (err) {
+      continue;
     }
+  }
 
-    const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const install = spawn(npm, ['install', 'electron@34.3.0', '--no-save'], {
-      cwd: projectRoot,
-      stdio: 'inherit'
-    });
-
-    install.on('error', reject);
-    install.on('exit', (code) => {
-      if (code === 0) {
-        resolve(require(electronPath));
-      } else {
-        reject(new Error(`npm install failed with code ${code}`));
-      }
-    });
-  });
+  return null;
 }
 
 async function startApp() {
   try {
-    console.log('Ensuring Electron is available...');
-    const electronPath = await installElectron();
-
-    const projectRoot = path.resolve(__dirname, '..');
-    const electronJsPath = path.join(projectRoot, 'build', 'electron.js');
-    const indexHtmlPath = path.join(projectRoot, 'build', 'index.html');
+    const electronPath = findElectron();
+    
+    if (!electronPath) {
+      console.error('Electron not found. Please install Electron globally with: npm install -g electron');
+      process.exit(1);
+    }
 
     console.log('Starting application...');
     console.log('Project root:', projectRoot);
