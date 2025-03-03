@@ -6,7 +6,7 @@ import { execAnvilFork, terminateAnvil, PORT } from '../src/blockchain/fork-work
 import { execCommand } from '../src/blockchain/exec-cast';
 import { getResultData } from '../src/blockchain/parser';
 import { Step } from '../src/types';
-import { main as simulateTestCase } from '../src/blockchain/simulation';
+import { simulateTestCase } from '../src/blockchain/simulation';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -82,7 +82,22 @@ function registerHandlers() {
       process.chdir(path.dirname(filePath));
       
       try {
-        await simulateTestCase();
+        // Read initial state
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const testCase = JSON.parse(content);
+        const totalSteps = testCase.steps.length;
+
+        // Create progress handler
+        const onProgress = (stepIndex: number) => {
+          if (mainWindow) {
+            mainWindow.webContents.send('simulation-progress', {
+              currentStep: stepIndex,
+              totalSteps
+            });
+          }
+        };
+
+        await simulateTestCase(filePath, onProgress);
         return true;
       } finally {
         // Restore the original working directory

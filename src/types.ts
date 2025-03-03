@@ -19,6 +19,7 @@ interface BaseStep {
   to: string;
   trace?: string;
   result?: string;
+  status?: 'success' | 'failed';
 }
 
 export interface TransferStep extends BaseStep {

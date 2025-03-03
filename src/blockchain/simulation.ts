@@ -1,18 +1,8 @@
 import fs from "fs";
+import path from "path";
 import { execAnvilFork, PORT, terminateAnvil } from "./fork-work";
 import { execCommand } from "./exec-cast";
 import { getResultData, TxResult } from "./parser";
-
-const _case = fs.readFileSync("cases/test.json", "utf8");
-const caseJson = JSON.parse(_case);
-
-// console.log(caseJson);
-
-const rpcUrl = caseJson.config.rpcUrl;
-
-if (!rpcUrl) {
-  throw new Error("rpcUrl is required");
-}
 
 export type Step = 
 | {
@@ -24,6 +14,7 @@ export type Step =
     arguments: string;
     trace?: string;
     result?: string;
+    status?: "success" | "failed";
   }
 | {
     name: string;
@@ -33,9 +24,10 @@ export type Step =
     value: string;
     trace?: string;
     result?: string;
+    status?: "success" | "failed";
   };
 
-const setEnvironment = async () => {
+const setEnvironment = async (rpcUrl: string) => {
   console.log("Setting up anvil fork...", rpcUrl);
   await execAnvilFork(rpcUrl);
   console.log("Fork started");
@@ -54,7 +46,12 @@ const processStep = async (step: Step) => {
   // 3. get trace of successful tx
 
   // Format value with ether unit if it's a decimal number
-  const formatValue = (value: string) => value.includes('.') ? `"${value} ether"` : value;
+  const formatValue = (value: string) => {
+    // Remove quotes if present
+    value = value.replace(/['"]/g, '');
+    // Add quotes only if value contains spaces
+    return value.includes(' ') ? `"${value}"` : value;
+  };
 
   // 1. do trace - it will be needed only if tx will fail (we will get the trace from here)
   let preTraceCommand: string;
@@ -95,6 +92,7 @@ const processStep = async (step: Step) => {
     console.log("send failed", e);
     step.result = sendResult;
     step.trace = preTraceResult;
+    step.status = "failed";
     console.log(preTraceResult);
     return;
   }
@@ -102,8 +100,10 @@ const processStep = async (step: Step) => {
   if (!result.status || result.status === 0) {
     console.log("tx failed");
     step.trace = preTraceResult;
+    step.status = "failed";
   } else if (result.status === 1) {
     console.log("tx success");
+    step.status = "success";
   } else {
     throw new Error("Unknown tx status: " + result.status);
   }
@@ -117,18 +117,45 @@ const processStep = async (step: Step) => {
   }
 };
 
-export const main = async () => {
-  await setEnvironment();
+export const simulateTestCase = async (
+  filePath: string,
+  onProgress?: (stepIndex: number) => void
+) => {
+  const _case = fs.readFileSync(filePath, "utf8");
+  const caseJson = JSON.parse(_case);
+
+  const rpcUrl = caseJson.config.rpcUrl;
+  if (!rpcUrl) {
+    throw new Error("rpcUrl is required");
+  }
+
+  await setEnvironment(rpcUrl);
   const steps: Step[] = caseJson.steps;
-  for (const step of steps) {
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
     console.log("======= " + step.name + " =======");
     try {
+      onProgress?.(i);
       await processStep(step);
-    } catch (e) {
+      // Write intermediate results after each step
+      fs.writeFileSync(filePath, JSON.stringify(caseJson, null, 2));
+      
+      // Stop if step failed
+      if (step.status === "failed") {
+        console.log("Step failed, stopping simulation");
+        break;
+      }
+    } catch (e: any) {
       console.log("Error processing step", e);
+      step.status = "failed";
+      step.result = e.message || String(e);
+      // Write results and stop
+      fs.writeFileSync(filePath, JSON.stringify(caseJson, null, 2));
+      break;
     }
   }
-  fs.writeFileSync("cases/test.result.json", JSON.stringify(caseJson, null, 2));
+  // Write final results
+  fs.writeFileSync(filePath, JSON.stringify(caseJson, null, 2));
 };
 
 // Comment out the auto-execution since we'll call it from the test script

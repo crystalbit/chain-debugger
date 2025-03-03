@@ -37,6 +37,7 @@ declare global {
       listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
       readFile: (filePath: string) => Promise<string>;
       simulateTestCase: (filePath: string) => Promise<void>;
+      onSimulationProgress: (callback: (progress: { currentStep: number; totalSteps: number }) => void) => () => void;
     };
   }
 }

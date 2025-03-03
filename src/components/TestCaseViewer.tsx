@@ -15,14 +15,20 @@ import {
   Card,
   CardContent,
   Button,
-  CircularProgress
+  CircularProgress,
+  Collapse,
+  Alert
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
   SwapHoriz as TransferIcon,
   Code as TransactionIcon,
   Settings as SettingsIcon,
-  PlayArrow as PlayIcon
+  PlayArrow as PlayIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  CheckCircle as SuccessIcon,
+  Error as ErrorIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 
@@ -35,6 +41,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
+  const [expandedTraces, setExpandedTraces] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     const loadTestCase = async () => {
@@ -52,78 +60,174 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     loadTestCase();
   }, [file.path]);
 
+  // Set up progress listener
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onSimulationProgress(({ currentStep }) => {
+      setCurrentStepIndex(currentStep);
+      // Load intermediate results
+      window.electronAPI.readFile(file.path)
+        .then(content => {
+          const data = JSON.parse(content);
+          setTestCase(data);
+        })
+        .catch(console.error);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [file.path]);
+
   const handleSimulate = async () => {
     if (!testCase) return;
     
     setIsSimulating(true);
+    setCurrentStepIndex(0);
     try {
+      // Start simulation
       await window.electronAPI.simulateTestCase(file.path);
-      // Reload the test case to show updated results
+      
+      // Load final results
       const content = await window.electronAPI.readFile(file.path);
       const data = JSON.parse(content);
       setTestCase(data);
+      
+      // Auto-expand failed steps
+      const newExpandedTraces = { ...expandedTraces };
+      data.steps.forEach((step: Step, index: number) => {
+        if (step.status === 'failed') {
+          newExpandedTraces[index] = true;
+        }
+      });
+      setExpandedTraces(newExpandedTraces);
     } catch (err) {
       setError('Simulation failed');
       console.error('Error during simulation:', err);
     } finally {
       setIsSimulating(false);
+      setCurrentStepIndex(-1);
     }
   };
 
-  const renderStep = (step: Step) => {
+  const toggleTrace = (index: number) => {
+    setExpandedTraces(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'success':
+        return 'success';
+      case 'failed':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const renderStep = (step: Step, index: number) => {
     const isTransfer = step.type === 'transfer';
+    const isExpanded = expandedTraces[index];
+    const isCurrentStep = isSimulating && index === currentStepIndex;
+    const hasSimulationData = step.status !== undefined;
     
     return (
-      <ListItem>
-        <ListItemIcon>
-          {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
-        </ListItemIcon>
-        <ListItemText
-          primary={step.name}
-          secondary={
-            <React.Fragment>
-              <Typography component="span" variant="body2" color="text.primary">
-                From: {step.from}
-              </Typography>
-              <br />
-              <Typography component="span" variant="body2" color="text.primary">
-                To: {step.to}
-              </Typography>
-              <br />
-              {isTransfer ? (
-                <Typography component="span" variant="body2" color="text.primary">
-                  Value: {step.value}
+      <ListItem sx={{
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        bgcolor: hasSimulationData && step.status === 'failed' ? 'error.light' : 'transparent'
+      }}>
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: step.trace ? 1 : 0 }}>
+          <ListItemIcon>
+            {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
+          </ListItemIcon>
+          <ListItemText
+            primary={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="subtitle1">{step.name}</Typography>
+                {hasSimulationData && step.status && (
+                  <Chip
+                    size="small"
+                    label={step.status}
+                    color={getStatusColor(step.status)}
+                    icon={step.status === 'success' ? <SuccessIcon /> : <ErrorIcon />}
+                  />
+                )}
+                {isCurrentStep && (
+                  <CircularProgress size={20} />
+                )}
+              </Box>
+            }
+            secondary={
+              <Box sx={{ mt: 1 }}>
+                <Typography component="div" variant="body2" color="text.primary">
+                  From: {step.from}
                 </Typography>
-              ) : (
-                <>
-                  <Typography component="span" variant="body2" color="text.primary">
-                    Signature: {step.signature}
+                <Typography component="div" variant="body2" color="text.primary">
+                  To: {step.to}
+                </Typography>
+                {isTransfer ? (
+                  <Typography component="div" variant="body2" color="text.primary">
+                    Value: {step.value}
                   </Typography>
-                  <br />
-                  <Typography component="span" variant="body2" color="text.primary">
-                    Arguments: {step.arguments}
-                  </Typography>
-                </>
+                ) : (
+                  <>
+                    <Typography component="div" variant="body2" color="text.primary">
+                      Signature: {step.signature}
+                    </Typography>
+                    <Typography component="div" variant="body2" color="text.primary">
+                      Arguments: {step.arguments}
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            }
+          />
+          {hasSimulationData && step.trace && (
+            <IconButton onClick={() => toggleTrace(index)} sx={{ mt: 1 }}>
+              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          )}
+        </Box>
+
+        {hasSimulationData && (step.trace || step.result) && (
+          <Collapse in={isExpanded} sx={{ width: '100%' }}>
+            <Box sx={{ pl: 7, pr: 2, pb: 2 }}>
+              {step.result && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {step.result}
+                </Alert>
               )}
               {step.trace && (
-                <>
-                  <br />
-                  <Typography component="span" variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                    Trace: {step.trace}
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    bgcolor: 'grey.900',
+                    maxHeight: '400px',
+                    overflow: 'auto'
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      color: 'common.white',
+                      m: 0
+                    }}
+                  >
+                    {step.trace}
                   </Typography>
-                </>
+                </Paper>
               )}
-              {step.result && (
-                <>
-                  <br />
-                  <Typography component="span" variant="body2" color="error" sx={{ whiteSpace: 'pre-wrap' }}>
-                    Error: {step.result}
-                  </Typography>
-                </>
-              )}
-            </React.Fragment>
-          }
-        />
+            </Box>
+          </Collapse>
+        )}
       </ListItem>
     );
   };
@@ -164,9 +268,9 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       </AppBar>
       <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
         {error ? (
-          <Paper elevation={2} sx={{ p: 3, bgcolor: 'error.dark' }}>
-            <Typography color="error">{error}</Typography>
-          </Paper>
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
         ) : testCase ? (
           <>
             <Card sx={{ mb: 3 }}>
@@ -191,7 +295,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                 {testCase.steps.map((step, index) => (
                   <React.Fragment key={index}>
                     {index > 0 && <Divider />}
-                    {renderStep(step)}
+                    {renderStep(step, index)}
                   </React.Fragment>
                 ))}
               </List>
@@ -199,7 +303,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           </>
         ) : (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <Typography>Loading...</Typography>
+            <CircularProgress />
           </Box>
         )}
       </Box>
