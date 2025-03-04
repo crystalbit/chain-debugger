@@ -28,7 +28,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   CheckCircle as SuccessIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  AccountBalance as SetBalanceIcon,
+  VerifiedUser as ApproveIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 
@@ -144,6 +146,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const renderStep = (step: Step, index: number) => {
     const isTransfer = step.type === 'transfer';
     const isApprove = step.type === 'approve';
+    const isSetBalance = step.type === 'set_balance';
     const isExpanded = expandedTraces[index];
     const hasSimulationData = step.status !== undefined;
     const isProcessing = processingStep === index;
@@ -156,7 +159,15 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       }}>
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: step.trace ? 1 : 0 }}>
           <ListItemIcon>
-            {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
+            {isTransfer ? (
+              <TransferIcon color="primary" />
+            ) : isApprove ? (
+              <ApproveIcon color="warning" />
+            ) : isSetBalance ? (
+              <SetBalanceIcon color="success" sx={{ fontSize: '1.5rem' }} />
+            ) : (
+              <TransactionIcon color="info" />
+            )}
           </ListItemIcon>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
