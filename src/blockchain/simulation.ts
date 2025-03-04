@@ -112,28 +112,20 @@ const processStep = async (
         id: 1,
         jsonrpc: "2.0"
       };
-      
-      // Use node-fetch instead of curl for cross-platform compatibility
-      const response = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData)
-      });
-      
-      const result = await response.text();
+      // First execute curl command
+      const curlCommand = `curl ${rpcUrl} -X POST -H "Content-Type: application/json" --data '${JSON.stringify(jsonData)}' --silent`;
+      const result = await execCommand(curlCommand);
       
       // Then mine a block
       const mineCommand = `cast rpc anvil_mine 1 --rpc-url ${rpcUrl}`;
       await execCommand(mineCommand);
       
       try {
-        const responseData = JSON.parse(result);
-        step.trace = responseData.error 
-          ? `Error: ${responseData.error.message}`
+        const response = JSON.parse(result);
+        step.trace = response.error 
+          ? `Error: ${response.error.message}`
           : `Successfully set balance for ${step.address} to ${step.value}`;
-        success = !responseData.error;
+        success = !response.error;
       } catch (e) {
         step.trace = `Successfully set balance for ${step.address} to ${step.value}`;
         success = true;
@@ -168,7 +160,6 @@ const processStep = async (
         fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
         onStepComplete?.(step.index!, step.status!);
       } else {
-        console.log(`FAILED STATUS ${step.status}`);
         // Set failed status immediately after failed transaction
         step.status = "failed";
         
