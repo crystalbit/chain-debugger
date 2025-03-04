@@ -11,7 +11,7 @@ const isDev = process.env.NODE_ENV === 'development';
 let mainWindow: BrowserWindow | null = null;
 
 // Simple storage implementation
-const storagePath = path.join(app.getPath('userData'), 'storage.json');
+const storagePath = path.normalize(path.join(app.getPath('userData'), 'storage.json'));
 const storage = {
   get: (key: string) => {
     try {
@@ -42,7 +42,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.normalize(path.join(__dirname, 'preload.js'))
     }
   });
 
@@ -50,7 +50,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadURL(`file://${path.join(__dirname, '../../build/index.html')}`);
+    mainWindow.loadURL(`file://${path.normalize(path.join(__dirname, '../../build/index.html'))}`);
   }
 
   mainWindow.on('closed', () => {

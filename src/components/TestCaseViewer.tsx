@@ -42,6 +42,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [expandedTraces, setExpandedTraces] = useState<{ [key: number]: boolean }>({});
+  const [processingStep, setProcessingStep] = useState<number | null>(null);
+
 
   // Add listener for step completion events
   useEffect(() => {
@@ -60,6 +62,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           [data.index]: true
         }));
       }
+      setProcessingStep(data.index + 1);
     };
 
     // Subscribe to step-complete events
@@ -92,6 +95,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     
     setIsSimulating(true);
     setError(null); // Clear any previous errors
+    setProcessingStep(0); // Set initial processing step
     
     try {
       // Clear all statuses and traces
@@ -116,6 +120,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSimulating(false);
+      setProcessingStep(null); // Clear processing step when simulation is complete
     }
   };
 
@@ -142,6 +147,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     const isApprove = step.type === 'approve';
     const isExpanded = expandedTraces[index];
     const hasSimulationData = step.status !== undefined;
+    const isProcessing = processingStep === index;
     
     return (
       <ListItem sx={{
@@ -151,12 +157,18 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       }}>
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: step.trace ? 1 : 0 }}>
           <ListItemIcon>
-            {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
+            {isTransfer ? (
+              <TransferIcon color="primary" />
+            ) : (
+              <TransactionIcon color="secondary" />
+            )}
           </ListItemIcon>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1">{step.name}</Typography>
-              {hasSimulationData && step.status && (
+              {isProcessing ? (
+                <CircularProgress size={16} />
+              ) : hasSimulationData && step.status && (
                 <Chip
                   size="small"
                   label={step.status}
