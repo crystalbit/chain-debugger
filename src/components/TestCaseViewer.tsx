@@ -41,8 +41,35 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const [testCase, setTestCase] = useState<TestCase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
   const [expandedTraces, setExpandedTraces] = useState<{ [key: number]: boolean }>({});
+
+  // Add listener for step completion events
+  useEffect(() => {
+    const handleStepComplete = (_event: any, data: { index: number; status: 'success' | 'failed'; step: Step }) => {
+      setTestCase(prev => {
+        if (!prev) return prev;
+        const newSteps = [...prev.steps];
+        newSteps[data.index] = { ...data.step };
+        return { ...prev, steps: newSteps };
+      });
+
+      // Auto-expand failed steps
+      if (data.status === 'failed') {
+        setExpandedTraces(prev => ({
+          ...prev,
+          [data.index]: true
+        }));
+      }
+    };
+
+    // Subscribe to step-complete events
+    window.electronAPI.onStepComplete(handleStepComplete);
+
+    // Cleanup listener
+    return () => {
+      window.electronAPI.removeStepCompleteListener(handleStepComplete);
+    };
+  }, []);
 
   useEffect(() => {
     const loadTestCase = async () => {
@@ -60,52 +87,35 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     loadTestCase();
   }, [file.path]);
 
-  // Set up progress listener
-  useEffect(() => {
-    const unsubscribe = window.electronAPI.onSimulationProgress(({ currentStep }) => {
-      setCurrentStepIndex(currentStep);
-      // Load intermediate results
-      window.electronAPI.readFile(file.path)
-        .then(content => {
-          const data = JSON.parse(content);
-          setTestCase(data);
-        })
-        .catch(console.error);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [file.path]);
-
   const handleSimulate = async () => {
     if (!testCase) return;
     
     setIsSimulating(true);
-    setCurrentStepIndex(0);
+    setError(null); // Clear any previous errors
+    
     try {
+      // Clear all statuses and traces
+      const cleanedTestCase = {
+        ...testCase,
+        steps: testCase.steps.map(step => ({
+          ...step,
+          status: undefined,
+          trace: undefined,
+          result: undefined
+        }))
+      };
+      setTestCase(cleanedTestCase);
+
       // Start simulation
-      await window.electronAPI.simulateTestCase(file.path);
-      
-      // Load final results
-      const content = await window.electronAPI.readFile(file.path);
-      const data = JSON.parse(content);
-      setTestCase(data);
-      
-      // Auto-expand failed steps
-      const newExpandedTraces = { ...expandedTraces };
-      data.steps.forEach((step: Step, index: number) => {
-        if (step.status === 'failed') {
-          newExpandedTraces[index] = true;
-        }
-      });
-      setExpandedTraces(newExpandedTraces);
+      const result = await window.electronAPI.simulateTestCase(file.path);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
     } catch (err) {
-      setError('Simulation failed');
-      console.error('Error during simulation:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSimulating(false);
-      setCurrentStepIndex(-1);
     }
   };
 
@@ -129,8 +139,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
 
   const renderStep = (step: Step, index: number) => {
     const isTransfer = step.type === 'transfer';
+    const isApprove = step.type === 'approve';
     const isExpanded = expandedTraces[index];
-    const isCurrentStep = isSimulating && index === currentStepIndex;
     const hasSimulationData = step.status !== undefined;
     
     return (
@@ -143,48 +153,63 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           <ListItemIcon>
             {isTransfer ? <TransferIcon color="primary" /> : <TransactionIcon color="secondary" />}
           </ListItemIcon>
-          <ListItemText
-            primary={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="subtitle1">{step.name}</Typography>
-                {hasSimulationData && step.status && (
-                  <Chip
-                    size="small"
-                    label={step.status}
-                    color={getStatusColor(step.status)}
-                    icon={step.status === 'success' ? <SuccessIcon /> : <ErrorIcon />}
-                  />
-                )}
-                {isCurrentStep && (
-                  <CircularProgress size={20} />
-                )}
-              </Box>
-            }
-            secondary={
-              <Box sx={{ mt: 1 }}>
-                <Typography component="div" variant="body2" color="text.primary">
-                  From: {step.from}
-                </Typography>
-                <Typography component="div" variant="body2" color="text.primary">
-                  To: {step.to}
-                </Typography>
-                {isTransfer ? (
+          <Box sx={{ flex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="subtitle1">{step.name}</Typography>
+              {hasSimulationData && step.status && (
+                <Chip
+                  size="small"
+                  label={step.status}
+                  color={getStatusColor(step.status)}
+                  icon={step.status === 'success' ? <SuccessIcon /> : <ErrorIcon />}
+                />
+              )}
+            </Box>
+            <Box sx={{ mt: 1 }}>
+              {step.type === "set_balance" ? (
+                <>
+                  <Typography component="div" variant="body2" color="text.primary">
+                    Address: {step.address}
+                  </Typography>
                   <Typography component="div" variant="body2" color="text.primary">
                     Value: {step.value}
                   </Typography>
-                ) : (
-                  <>
+                </>
+              ) : (
+                <>
+                  <Typography component="div" variant="body2" color="text.primary">
+                    From: {step.from}
+                  </Typography>
+                  <Typography component="div" variant="body2" color="text.primary">
+                    To: {step.to}
+                  </Typography>
+                  {isTransfer ? (
                     <Typography component="div" variant="body2" color="text.primary">
-                      Signature: {step.signature}
+                      Value: {step.value}
                     </Typography>
-                    <Typography component="div" variant="body2" color="text.primary">
-                      Arguments: {step.arguments}
-                    </Typography>
-                  </>
-                )}
-              </Box>
-            }
-          />
+                  ) : isApprove ? (
+                    <>
+                      <Typography component="div" variant="body2" color="text.primary">
+                        Spender: {step.spender}
+                      </Typography>
+                      <Typography component="div" variant="body2" color="text.primary">
+                        Amount: {step.amount}
+                      </Typography>
+                    </>
+                  ) : (
+                    <>
+                      <Typography component="div" variant="body2" color="text.primary">
+                        Signature: {step.signature}
+                      </Typography>
+                      <Typography component="div" variant="body2" color="text.primary">
+                        Arguments: {step.arguments}
+                      </Typography>
+                    </>
+                  )}
+                </>
+              )}
+            </Box>
+          </Box>
           {hasSimulationData && step.trace && (
             <IconButton onClick={() => toggleTrace(index)} sx={{ mt: 1 }}>
               {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -258,7 +283,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           <Button
             variant="contained"
             color="secondary"
-            startIcon={isSimulating ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
+            startIcon={<PlayIcon />}
             onClick={handleSimulate}
             disabled={isSimulating || !testCase}
           >
@@ -303,7 +328,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           </>
         ) : (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
+            <Typography>Loading test case...</Typography>
           </Box>
         )}
       </Box>

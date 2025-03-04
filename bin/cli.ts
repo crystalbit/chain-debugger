@@ -5,7 +5,7 @@ import * as path from 'path';
 
 const projectRoot = path.resolve(__dirname, '..');
 const electronPath = require('electron');
-const electronJsPath = path.join(projectRoot, 'electron.js');
+const electronJsPath = path.join(projectRoot, 'public', 'electron.js');
 const indexHtmlPath = path.join(projectRoot, 'index.html');
 
 console.log('Starting application...');

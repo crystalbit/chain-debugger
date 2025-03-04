@@ -27,18 +27,11 @@ import {
 } from '@mui/icons-material';
 import { TestCaseViewer } from './components/TestCaseViewer';
 import { TestCaseList } from './components/TestCaseList';
-import { JsonFile, TestCase } from './types';
+import { JsonFile, TestCase, ElectronAPI } from './types';
 
 declare global {
   interface Window {
-    electronAPI: {
-      selectDirectory: () => Promise<string | undefined>;
-      getLastDirectory: () => Promise<string | undefined>;
-      listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
-      readFile: (filePath: string) => Promise<string>;
-      simulateTestCase: (filePath: string) => Promise<void>;
-      onSimulationProgress: (callback: (progress: { currentStep: number; totalSteps: number }) => void) => () => void;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 

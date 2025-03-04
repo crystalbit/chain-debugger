@@ -2,13 +2,11 @@ import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execAnvilFork, terminateAnvil, PORT } from '../src/blockchain/fork-work';
-import { execCommand } from '../src/blockchain/exec-cast';
-import { getResultData } from '../src/blockchain/parser';
-import { Step } from '../src/types';
+import { terminateAnvil } from '../src/blockchain/fork-work';
 import { simulateTestCase } from '../src/blockchain/simulation';
+import { hang } from 'process';
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -52,7 +50,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadURL(`file://${path.join(__dirname, '../build/index.html')}`);
+    mainWindow.loadURL(`file://${path.join(__dirname, '../../build/index.html')}`);
   }
 
   mainWindow.on('closed', () => {
@@ -73,39 +71,27 @@ function registerHandlers() {
   });
 
   // Register IPC handlers
-  ipcMain.handle('simulate-test-case', async (_event: IpcMainInvokeEvent, filePath: string) => {
+  ipcMain.handle('simulate-test-case', async (event, filePath) => {
     try {
-      // Save the current working directory
-      const originalCwd = process.cwd();
-      
-      // Change to the directory containing the test case
-      process.chdir(path.dirname(filePath));
-      
-      try {
-        // Read initial state
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const testCase = JSON.parse(content);
-        const totalSteps = testCase.steps.length;
-
-        // Create progress handler
-        const onProgress = (stepIndex: number) => {
-          if (mainWindow) {
-            mainWindow.webContents.send('simulation-progress', {
-              currentStep: stepIndex,
-              totalSteps
-            });
-          }
-        };
-
-        await simulateTestCase(filePath, onProgress);
-        return true;
-      } finally {
-        // Restore the original working directory
-        process.chdir(originalCwd);
-      }
+      await simulateTestCase(
+        filePath,
+        (stepIndex: number, status: 'success' | 'failed') => {
+          // Read the current state of the file to get the updated step
+          const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          const step = content.steps[stepIndex];
+          
+          // Emit step completion event
+          event.sender.send('step-complete', { 
+            index: stepIndex, 
+            status, 
+            step 
+          });
+        }
+      );
+      return { success: true };
     } catch (error) {
-      console.error('Simulation failed:', error);
-      throw error;
+      console.error('Error simulating test case:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   });
 
