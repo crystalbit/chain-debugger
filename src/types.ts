@@ -13,84 +13,47 @@ export interface TestCase {
   steps: Step[];
 }
 
-interface BaseStep {
+export type BaseStep = {
   name: string;
-  from: string;
-  to: string;
+  index?: number;
   trace?: string;
   result?: string;
-  status?: 'success' | 'failed';
-}
+  status?: "success" | "failed";
+};
 
-export interface TransferStep extends BaseStep {
-  type: 'transfer';
-  value: string;
-}
+export type BaseTransactionStep = BaseStep & {
+  from: string;
+  to: string;
+};
 
-export interface TransactionStep extends BaseStep {
-  type: 'transaction';
+export type TransactionStep = BaseTransactionStep & {
+  type: "transaction";
   signature: string;
   arguments: string;
-}
+};
 
-export interface ApproveStep extends BaseStep {
-  type: 'approve';
+export type TransferStep = BaseTransactionStep & {
+  type: "transfer";
+  value: string;
+};
+
+export type ApproveStep = BaseTransactionStep & {
+  type: "approve";
   spender: string;
   amount: string;
-}
+};
 
-export interface SetBalanceStep extends BaseStep {
-  type: 'set_balance';
+export type SetBalanceStep = BaseStep & {
+  type: "set_balance";
   address: string;
   value: string;
-}
+};
 
-export type Step = 
-| {
-    name: string;
-    type: "transaction";
-    from: string;
-    to: string;
-    signature: string;
-    arguments: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "transfer";
-    from: string;
-    to: string;
-    value: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "approve";
-    from: string;
-    to: string;
-    spender: string;
-    amount: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "set_balance";
-    address: string;
-    value: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  };
+export type EmptyStep = BaseStep & {
+  type: "empty";
+};
+
+export type Step = TransactionStep | TransferStep | ApproveStep | SetBalanceStep | EmptyStep;
 
 declare global {
   interface Window {

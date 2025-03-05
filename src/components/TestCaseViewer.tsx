@@ -30,7 +30,8 @@ import {
   CheckCircle as SuccessIcon,
   Error as ErrorIcon,
   AccountBalance as SetBalanceIcon,
-  VerifiedUser as ApproveIcon
+  VerifiedUser as ApproveIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 
@@ -147,9 +148,11 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     const isTransfer = step.type === 'transfer';
     const isApprove = step.type === 'approve';
     const isSetBalance = step.type === 'set_balance';
+    const isEmpty = step.type === 'empty';
     const isExpanded = expandedTraces[index];
-    const hasSimulationData = step.status !== undefined;
-    const isProcessing = processingStep === index;
+    const hasSimulationData = !isEmpty && step.status !== undefined;
+    const isProcessing = !isEmpty && processingStep === index;
+    const hasTrace = !isEmpty && 'trace' in step && step.trace;
     
     return (
       <ListItem sx={{
@@ -157,7 +160,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
         alignItems: 'stretch',
         bgcolor: hasSimulationData && step.status === 'failed' ? 'error.light' : 'transparent'
       }}>
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: step.trace ? 1 : 0 }}>
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: hasTrace ? 1 : 0 }}>
           <ListItemIcon>
             {isTransfer ? (
               <TransferIcon color="primary" />
@@ -165,6 +168,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
               <ApproveIcon color="warning" />
             ) : isSetBalance ? (
               <SetBalanceIcon color="success" sx={{ fontSize: '1.5rem' }} />
+            ) : isEmpty ? (
+              <CheckCircleIcon color="disabled" />
             ) : (
               <TransactionIcon color="info" />
             )}
@@ -172,9 +177,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1">{step.name}</Typography>
-              {isProcessing ? (
-                <CircularProgress size={16} />
-              ) : hasSimulationData && step.status && (
+              {isProcessing && <CircularProgress size={16} />}
+              {'status' in step && step.status && (
                 <Chip
                   size="small"
                   label={step.status}
@@ -193,6 +197,10 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                     Value: {step.value}
                   </Typography>
                 </>
+              ) : step.type === "empty" ? (
+                <Typography component="div" variant="body2" color="text.secondary">
+                  Empty step
+                </Typography>
               ) : (
                 <>
                   <Typography component="div" variant="body2" color="text.primary">
@@ -228,7 +236,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
               )}
             </Box>
           </Box>
-          {hasSimulationData && step.trace && (
+          {hasSimulationData && hasTrace && (
             <IconButton onClick={() => toggleTrace(index)} sx={{ mt: 1 }}>
               {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </IconButton>

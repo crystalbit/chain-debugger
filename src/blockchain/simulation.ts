@@ -6,54 +6,24 @@
 import fs from "fs";
 import { execAnvilFork, PORT, terminateAnvil } from "./fork-work";
 import { execCommand } from "./exec-cast";
-import { getResultData, TxResult } from "./parser";
+import { Step, TransactionStep, TransferStep, ApproveStep, SetBalanceStep, EmptyStep } from "../types";
+import {
+  emptyStepHandler,
+  transactionStepHandler,
+  transferStepHandler,
+  approveStepHandler,
+  setBalanceStepHandler,
+  StepHandler,
+  updateStepStatus
+} from "./steps";
 
-export type Step = 
-| {
-    name: string;
-    type: "transaction";
-    from: string;
-    to: string;
-    signature: string;
-    arguments: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "transfer";
-    from: string;
-    to: string;
-    value: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "approve";
-    from: string;
-    to: string;
-    spender: string;
-    amount: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  }
-| {
-    name: string;
-    type: "set_balance";
-    address: string;
-    value: string;
-    trace?: string;
-    result?: string;
-    status?: "success" | "failed";
-    index?: number;
-  };
+const handlers: Array<StepHandler<any>> = [
+  emptyStepHandler,
+  transactionStepHandler,
+  transferStepHandler,
+  approveStepHandler,
+  setBalanceStepHandler
+];
 
 const setEnvironment = async (rpcUrl: string) => {
   console.log("Setting up anvil fork...", rpcUrl);
@@ -87,133 +57,34 @@ const toHex = (value: string): string => {
   return '0x' + BigInt(value).toString(16);
 };
 
+const isTransactionStep = (step: Step): step is TransactionStep => step.type === "transaction";
+const isTransferStep = (step: Step): step is TransferStep => step.type === "transfer";
+const isApproveStep = (step: Step): step is ApproveStep => step.type === "approve";
+const isSetBalanceStep = (step: Step): step is SetBalanceStep => step.type === "set_balance";
+const isEmptyStep = (step: Step): step is EmptyStep => step.type === "empty";
+
+type IndexedStep = Step & { index: number };
+
 const processStep = async (
-  step: Step,
+  step: IndexedStep,
   filePath: string,
   testCase: any,
   onStepComplete?: (stepIndex: number, status: 'success' | 'failed') => void
 ) => {
-  const rpcUrl = `http://127.0.0.1:${PORT}`;
-  let success = false;
-  let errorMessage = '';
-  let command = ''; // Initialize command variable
+  const context = {
+    rpcUrl: `http://127.0.0.1:${PORT}`,
+    filePath,
+    testCase,
+    onStepComplete
+  };
 
-  try {
-    if (step.type === "transfer") {
-      command = `cast send ${step.to} --value "${step.value}" --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
-    } else if (step.type === "approve") {
-      command = `cast send ${step.to} "approve(address,uint256)" ${step.spender} "${step.amount}" --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
-    } else if (step.type === "set_balance") {
-      const weiValue = toWei(step.value);
-      const hexValue = toHex(weiValue);
-      const jsonData = {
-        method: "anvil_setBalance",
-        params: [step.address, hexValue],
-        id: 1,
-        jsonrpc: "2.0"
-      };
-      const response = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData)
-      });
-      const result = await response.text();
-      
-      // Then mine a block
-      const mineCommand = `cast rpc anvil_mine 1 --rpc-url ${rpcUrl}`;
-      await execCommand(mineCommand);
-      
-      try {
-        const response = JSON.parse(result);
-        step.trace = response.error 
-          ? `Error: ${response.error.message}`
-          : `Successfully set balance for ${step.address} to ${step.value}`;
-        success = !response.error;
-      } catch (e) {
-        step.trace = `Successfully set balance for ${step.address} to ${step.value}`;
-        success = true;
-      }
-      // Set status immediately after set_balance operation
-      step.status = success ? "success" : "failed";
-      fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index!, step.status!);
-    } else {
-      command = `cast send ${step.to} "${step.signature}" ${step.arguments} --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
-    }
-
-    if (step.type !== "set_balance") {
-      console.log(`Executing command: ${command}`);
-      const result = await execCommand(command);
-      console.log(`Command result: ${result}`);
-      
-      const resultData = getResultData(result);
-      console.log(`Parsed result data:`, resultData);
-      
-      if (resultData.status === 1) {
-        // Set success status immediately after successful transaction
-        step.status = "success";
-        
-        // For successful transactions, use cast run
-        const traceCommand = `cast run ${resultData.hash} --rpc-url ${rpcUrl}`;
-        console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand);
-        console.log(`Trace result: ${trace}`);
-        step.trace = trace;
-        success = true;
-        fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-        onStepComplete?.(step.index!, step.status!);
-      } else {
-        // Set failed status immediately after failed transaction
-        step.status = "failed";
-        
-        // For failed transactions, use cast call with --trace
-        let traceCommand: string;
-        if (step.type === "transfer") {
-          traceCommand = `cast call ${step.to} --value "${step.value}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-        } else if (step.type === "approve") {
-          traceCommand = `cast call ${step.to} "approve(address,uint256)" ${step.spender} ${step.amount} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-        } else {
-          traceCommand = `cast call ${step.to} "${step.signature}" ${step.arguments} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-        }
-        console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand, true);
-        console.log(`Trace result: ${trace}`);
-        step.trace = trace;
-        step.result = result; // Store the revert data in result
-        success = false;
-        fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-        onStepComplete?.(step.index!, step.status!);
-      }
-    }
-  } catch (error) {
-    console.error(`Error processing step ${step.name}:`, error);
-    errorMessage = error instanceof Error ? error.message : String(error);
-    
-    // Set failed status immediately after error
-    step.status = "failed";
-    
-    if (step.type !== "set_balance") {
-      // Get trace for failed transaction
-      let traceCommand: string;
-      if (step.type === "transfer") {
-        traceCommand = `cast call ${step.to} --value "${step.value}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-      } else if (step.type === "approve") {
-        traceCommand = `cast call ${step.to} "approve(address,uint256)" ${step.spender} ${step.amount} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-      } else {
-        traceCommand = `cast call ${step.to} "${step.signature}" ${step.arguments} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
-      }
-      console.log(`Getting trace with command: ${traceCommand}`);
-      const trace = await execCommand(traceCommand, true);
-      console.log(`Trace result: ${trace}`);
-      step.trace = trace;
-    } else {
-      step.trace = errorMessage;
-    }
-    success = false;
-    fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-    onStepComplete?.(step.index!, step.status!);
+  const handler = handlers.find(h => h.canHandle(step));
+  if (handler) {
+    await handler.process(step, context);
+  } else {
+    console.error(`No handler found for step type: ${step.type}`);
+    updateStepStatus(step, 'failed', `No handler found for step type: ${step.type}`);
+    onStepComplete?.(step.index, 'failed');
   }
 };
 
@@ -221,64 +92,39 @@ export const simulateTestCase = async (
   filePath: string,
   onStepComplete?: (stepIndex: number, status: 'success' | 'failed') => void
 ) => {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const testCase = JSON.parse(content);
-  const totalSteps = testCase.steps.length;
-  const isDev = true;
-  console.log("Development mode:", isDev);
-  console.log(`Total steps to process: ${totalSteps}`);
-
   try {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    const testCase = JSON.parse(fileContent);
+
     // Clean up all steps before starting
     testCase.steps.forEach((step: Step) => {
-      delete step.status;
-      delete step.trace;
-      delete step.result;
-      delete step.index;
+      if ('status' in step) delete (step as any).status;
+      if ('trace' in step) delete (step as any).trace;
+      if ('result' in step) delete (step as any).result;
+      if ('index' in step) delete (step as any).index;
     });
 
-    // Set up environment first, before any steps
-    console.log("\nSetting up environment...");
+    // Add index to each step
+    testCase.steps = testCase.steps.map((step: Step, index: number): IndexedStep => ({
+      ...step,
+      index
+    }));
+
     await setEnvironment(testCase.config.rpcUrl);
-    console.log("Environment setup complete\n");
 
-    // Now process steps
-    for (let i = 0; i < totalSteps; i++) {
-      const step = testCase.steps[i];
-      step.index = i;
-      
-      // Add delay before each step except the first one in development mode
-      if (isDev && i > 0) {
-        console.log("\nWaiting 1 seconds before next step...");
-        await new Promise(resolve => setTimeout(resolve, 1_000));
-      }
-
-      console.log(`\n======= Processing step ${i + 1} of ${totalSteps}: ${step.name} =======`);
-      
-      try {
-        await processStep(step, filePath, testCase, onStepComplete);
-        console.log(`Step ${i + 1} completed successfully`);
-      } catch (error) {
-        console.error(`Error in step ${i + 1}:`, error);
-        step.status = 'failed';
-        fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-        onStepComplete?.(i, 'failed');
-        return;
-      }
-
-      if (step.status === 'failed') {
-        console.log(`Step ${i + 1} failed, stopping simulation`);
-        return;
-      }
+    // Process each step sequentially
+    for (const step of testCase.steps) {
+      await processStep(step, filePath, testCase, onStepComplete);
     }
-    
-    console.log("\nSimulation completed successfully");
+
+    return { success: true };
   } catch (error) {
-    console.error("Simulation failed:", error);
-    throw error;
+    console.error('Error in simulateTestCase:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
   } finally {
-    console.log("\nCleaning up...");
-    const terminated = terminateAnvil();
-    console.log("Anvil process terminated:", terminated);
+    await terminateAnvil();
   }
 };
