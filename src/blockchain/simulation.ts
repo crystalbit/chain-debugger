@@ -112,9 +112,14 @@ const processStep = async (
         id: 1,
         jsonrpc: "2.0"
       };
-      // First execute curl command
-      const curlCommand = `curl ${rpcUrl} -X POST -H "Content-Type: application/json" --data '${JSON.stringify(jsonData)}' --silent`;
-      const result = await execCommand(curlCommand);
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonData)
+      });
+      const result = await response.text();
       
       // Then mine a block
       const mineCommand = `cast rpc anvil_mine 1 --rpc-url ${rpcUrl}`;
