@@ -15,7 +15,6 @@ export interface TestCase {
 
 export type BaseStep = {
   name: string;
-  index?: number;
   trace?: string;
   result?: string;
   status?: "success" | "failed";
@@ -53,7 +52,7 @@ export type EmptyStep = BaseStep & {
   type: "empty";
 };
 
-export type Step = TransactionStep | TransferStep | ApproveStep | SetBalanceStep | EmptyStep;
+export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep;
 
 declare global {
   interface Window {
@@ -66,6 +65,7 @@ export interface ElectronAPI {
   getLastDirectory: () => Promise<string | undefined>;
   listJsonFiles: (dirPath: string) => Promise<JsonFile[]>;
   readFile: (filePath: string) => Promise<string>;
+  writeFile: (filePath: string, content: string) => Promise<void>;
   simulateTestCase: (filePath: string) => Promise<{ success: boolean; error?: string }>;
   onStepComplete: (callback: (event: any, data: { index: number; status: 'success' | 'failed'; step: Step }) => void) => void;
   removeStepCompleteListener: (callback: (event: any, data: { index: number; status: 'success' | 'failed'; step: Step }) => void) => void;

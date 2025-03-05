@@ -7,9 +7,9 @@ import fs from 'fs';
 export const transferStepHandler: StepHandler<TransferStep> = {
   canHandle: (step: Step): step is TransferStep => step.type === 'transfer',
   
-  process: async (step: TransferStep & { index: number }, context: StepContext) => {
+  process: async (step: TransferStep, stepIndex: number, context: StepContext) => {
     const { rpcUrl, filePath, testCase, onStepComplete } = context;
-    const command = `cast send ${step.to} --value "${step.value}" --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
+    const command = `cast send ${step.to} --value ${step.value} --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
     
     try {
       console.log(`Executing command: ${command}`);
@@ -27,7 +27,7 @@ export const transferStepHandler: StepHandler<TransferStep> = {
         
         updateStepStatus(step, 'success', trace);
       } else {
-        const traceCommand = `cast call ${step.to} --value "${step.value}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+        const traceCommand = `cast call ${step.to} --value ${step.value} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
         console.log(`Getting trace with command: ${traceCommand}`);
         const trace = await execCommand(traceCommand, true);
         console.log(`Trace result: ${trace}`);
@@ -36,28 +36,28 @@ export const transferStepHandler: StepHandler<TransferStep> = {
       }
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
       
     } catch (error) {
       console.error(`Error processing transfer step ${step.name}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      const traceCommand = `cast call ${step.to} --value "${step.value}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+      const traceCommand = `cast call ${step.to} --value ${step.value} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
       console.log(`Getting trace with command: ${traceCommand}`);
       const trace = await execCommand(traceCommand, true);
       
       updateStepStatus(step, 'failed', trace, errorMessage);
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
     }
   }
 }; 

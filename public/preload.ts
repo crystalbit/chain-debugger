@@ -18,6 +18,7 @@ const electronAPI = {
   getLastDirectory: () => ipcRenderer.invoke('get-last-directory'),
   listJsonFiles: (dirPath: string): Promise<JsonFile[]> => ipcRenderer.invoke('list-json-files', dirPath),
   readFile: (filePath: string): Promise<string> => ipcRenderer.invoke('read-file', filePath),
+  writeFile: (filePath: string, content: string): Promise<void> => ipcRenderer.invoke('write-file', filePath, content),
   simulateTestCase: (filePath: string): Promise<{ success: boolean; error?: string }> => 
     ipcRenderer.invoke('simulate-test-case', filePath),
   onStepComplete: (callback: (event: any, data: any) => void) => 

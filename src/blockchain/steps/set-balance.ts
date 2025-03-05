@@ -26,7 +26,7 @@ const toHex = (value: string): string => {
 export const setBalanceStepHandler: StepHandler<SetBalanceStep> = {
   canHandle: (step: Step): step is SetBalanceStep => step.type === 'set_balance',
   
-  process: async (step: SetBalanceStep & { index: number }, context: StepContext) => {
+  process: async (step: SetBalanceStep, stepIndex: number, context: StepContext) => {
     const { rpcUrl, filePath, testCase, onStepComplete } = context;
     const weiValue = toWei(step.value);
     const hexValue = toHex(weiValue);
@@ -66,11 +66,11 @@ export const setBalanceStepHandler: StepHandler<SetBalanceStep> = {
       }
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
       
     } catch (error) {
       console.error(`Error processing set balance step ${step.name}:`, error);
@@ -79,11 +79,11 @@ export const setBalanceStepHandler: StepHandler<SetBalanceStep> = {
       updateStepStatus(step, 'failed', errorMessage);
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
     }
   }
 }; 

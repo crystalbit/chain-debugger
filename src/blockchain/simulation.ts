@@ -63,10 +63,9 @@ const isApproveStep = (step: Step): step is ApproveStep => step.type === "approv
 const isSetBalanceStep = (step: Step): step is SetBalanceStep => step.type === "set_balance";
 const isEmptyStep = (step: Step): step is EmptyStep => step.type === "empty";
 
-type IndexedStep = Step & { index: number };
-
 const processStep = async (
-  step: IndexedStep,
+  step: Step,
+  stepIndex: number,
   filePath: string,
   testCase: any,
   onStepComplete?: (stepIndex: number, status: 'success' | 'failed') => void
@@ -80,11 +79,16 @@ const processStep = async (
 
   const handler = handlers.find(h => h.canHandle(step));
   if (handler) {
-    await handler.process(step, context);
+    try {
+      await handler.process(step, stepIndex, context);
+    } catch (error) {
+      console.error(`Error processing step ${stepIndex}:`, error);
+      onStepComplete?.(stepIndex, 'failed');
+    }
   } else {
     console.error(`No handler found for step type: ${step.type}`);
     updateStepStatus(step, 'failed', `No handler found for step type: ${step.type}`);
-    onStepComplete?.(step.index, 'failed');
+    onStepComplete?.(stepIndex, 'failed');
   }
 };
 
@@ -101,20 +105,13 @@ export const simulateTestCase = async (
       if ('status' in step) delete (step as any).status;
       if ('trace' in step) delete (step as any).trace;
       if ('result' in step) delete (step as any).result;
-      if ('index' in step) delete (step as any).index;
     });
-
-    // Add index to each step
-    testCase.steps = testCase.steps.map((step: Step, index: number): IndexedStep => ({
-      ...step,
-      index
-    }));
 
     await setEnvironment(testCase.config.rpcUrl);
 
     // Process each step sequentially
-    for (const step of testCase.steps) {
-      await processStep(step, filePath, testCase, onStepComplete);
+    for (let i = 0; i < testCase.steps.length; i++) {
+      await processStep(testCase.steps[i], i, filePath, testCase, onStepComplete);
     }
 
     return { success: true };

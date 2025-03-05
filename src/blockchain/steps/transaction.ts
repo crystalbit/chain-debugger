@@ -7,7 +7,7 @@ import fs from 'fs';
 export const transactionStepHandler: StepHandler<TransactionStep> = {
   canHandle: (step: Step): step is TransactionStep => step.type === 'transaction',
   
-  process: async (step: TransactionStep & { index: number }, context: StepContext) => {
+  process: async (step: TransactionStep, stepIndex: number, context: StepContext) => {
     const { rpcUrl, filePath, testCase, onStepComplete } = context;
     const command = `cast send ${step.to} "${step.signature}" ${step.arguments} --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
     
@@ -36,11 +36,11 @@ export const transactionStepHandler: StepHandler<TransactionStep> = {
       }
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
       
     } catch (error) {
       console.error(`Error processing transaction step ${step.name}:`, error);
@@ -53,11 +53,11 @@ export const transactionStepHandler: StepHandler<TransactionStep> = {
       updateStepStatus(step, 'failed', trace, errorMessage);
       
       // Update the step in the test case array
-      testCase.steps[step.index] = step;
+      testCase.steps[stepIndex] = step;
       
       // Save changes to the test case file
       fs.writeFileSync(filePath, JSON.stringify(testCase, null, 2), 'utf-8');
-      onStepComplete?.(step.index, step.status!);
+      onStepComplete?.(stepIndex, step.status!);
     }
   }
 }; 

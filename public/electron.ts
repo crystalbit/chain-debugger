@@ -159,6 +159,15 @@ function registerHandlers() {
       throw error;
     }
   });
+
+  ipcMain.handle('write-file', async (_: any, filePath: string, content: string) => {
+    try {
+      fs.writeFileSync(filePath, content, 'utf-8');
+    } catch (error) {
+      console.error('Error writing file:', error);
+      throw error;
+    }
+  });
 }
 
 // App lifecycle

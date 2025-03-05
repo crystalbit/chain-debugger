@@ -9,7 +9,7 @@ export interface StepContext {
 
 export interface StepHandler<T extends Step = Step> {
   canHandle: (step: Step) => step is T;
-  process: (step: T & { index: number }, context: StepContext) => Promise<void>;
+  process: (step: T, stepIndex: number, context: StepContext) => Promise<void>;
 }
 
 export const updateStepStatus = (
