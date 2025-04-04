@@ -8,42 +8,22 @@ import {
   Paper,
   Chip,
   List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Divider,
   Card,
   CardContent,
   Button,
-  CircularProgress,
-  Collapse,
   Alert,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
-  SwapHoriz as TransferIcon,
-  Code as TransactionIcon,
   Settings as SettingsIcon,
   PlayArrow as PlayIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  CheckCircle as SuccessIcon,
-  Error as ErrorIcon,
-  AccountBalance as SetBalanceIcon,
-  VerifiedUser as ApproveIcon,
-  CheckCircle as CheckCircleIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
-  ContentCopy as DuplicateIcon,
-  ArrowUpward as MoveUpIcon,
-  ArrowDownward as MoveDownIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import { JsonFile, TestCase, Step } from '../types';
 import {
@@ -90,6 +70,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [stepToConvert, setStepToConvert] = useState<number | null>(null);
   const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | null>(null);
+  const [isEditingRpcUrl, setIsEditingRpcUrl] = useState(false);
+  const [newRpcUrl, setNewRpcUrl] = useState('');
 
   // Add listener for step completion events
   useEffect(() => {
@@ -343,6 +325,32 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     setStepToConvert(null);
   };
 
+  const handleSaveRpcUrl = async () => {
+    if (!testCase) return;
+
+    try {
+      // Update the test case with the new RPC URL
+      const updatedTestCase = {
+        ...testCase,
+        config: {
+          ...testCase.config,
+          rpcUrl: newRpcUrl
+        }
+      };
+
+      setTestCase(updatedTestCase);
+
+      // Save the updated test case to file
+      await window.electronAPI.writeFile(file.path, JSON.stringify(updatedTestCase, null, 2));
+
+      setIsEditingRpcUrl(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error saving RPC URL:', err);
+      setError('Failed to save RPC URL');
+    }
+  };
+
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppBar position="static" elevation={0}>
@@ -392,9 +400,53 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                     Configuration
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary">
-                  RPC URL: {testCase.config.rpcUrl}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                    RPC URL:
+                  </Typography>
+                  {isEditingRpcUrl ? (
+                    <>
+                      <TextField
+                        size="small"
+                        value={newRpcUrl}
+                        onChange={(e) => setNewRpcUrl(e.target.value)}
+                        sx={{ flexGrow: 1, mr: 1 }}
+                      />
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={handleSaveRpcUrl}
+                        title="Save"
+                      >
+                        <SaveIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => setIsEditingRpcUrl(false)}
+                        title="Cancel"
+                      >
+                        <CancelIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <>
+                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                        {testCase.config.rpcUrl}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setNewRpcUrl(testCase.config.rpcUrl);
+                          setIsEditingRpcUrl(true);
+                        }}
+                        title="Edit"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  )}
+                </Box>
               </CardContent>
             </Card>
 
