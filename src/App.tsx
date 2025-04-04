@@ -9,25 +9,13 @@ import {
   Container,
   Paper,
   Button,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
   Box,
-  Divider,
-  CircularProgress,
-  Chip
+  Alert,
+  Snackbar
 } from '@mui/material';
-import {
-  Folder as FolderIcon,
-  ChevronLeft as ChevronLeftIcon,
-  Description as DescriptionIcon,
-  Error as ErrorIcon
-} from '@mui/icons-material';
 import { TestCaseViewer } from './components/TestCaseViewer';
 import { TestCaseList } from './components/TestCaseList';
-import { JsonFile, TestCase, ElectronAPI } from './types';
+import { JsonFile, ElectronAPI } from './types';
 
 declare global {
   interface Window {
@@ -55,6 +43,7 @@ function App() {
   const [selectedDirectory, setSelectedDirectory] = useState<string>();
   const [jsonFiles, setJsonFiles] = useState<JsonFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<JsonFile | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     window.electronAPI.getLastDirectory().then(dir => {
@@ -74,6 +63,32 @@ function App() {
       const files = await window.electronAPI.listJsonFiles(dir);
       setJsonFiles(files);
       setSelectedFile(null);
+    }
+  };
+
+  const handleNewTestCase = (file: JsonFile) => {
+    // Add the new file to the list
+    setJsonFiles(prev => [...prev, file]);
+
+    // Show success notification
+    setNotification({
+      message: `Created new test case: ${file.name}`,
+      type: 'success'
+    });
+
+    // Optionally, immediately open the new test case
+    setSelectedFile(file);
+  };
+
+  const handleCloseNotification = () => {
+    setNotification(null);
+  };
+
+  // If we want to refresh the file list after saving a test case
+  const refreshFileList = async () => {
+    if (selectedDirectory) {
+      const files = await window.electronAPI.listJsonFiles(selectedDirectory);
+      setJsonFiles(files);
     }
   };
 
@@ -115,6 +130,8 @@ function App() {
               <TestCaseList
                 files={jsonFiles}
                 onSelect={setSelectedFile}
+                onNewTestCase={handleNewTestCase}
+                directory={selectedDirectory || ''}
               />
             </Container>
           </>
@@ -123,9 +140,28 @@ function App() {
         {selectedFile && (
           <TestCaseViewer
             file={selectedFile}
-            onBack={() => setSelectedFile(null)}
+            onBack={() => {
+              setSelectedFile(null);
+              refreshFileList(); // Refresh the file list when returning
+            }}
           />
         )}
+
+        {/* Notification Snackbar */}
+        <Snackbar
+          open={notification !== null}
+          autoHideDuration={6000}
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification?.type}
+            sx={{ width: '100%' }}
+          >
+            {notification?.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </ThemeProvider>
   );

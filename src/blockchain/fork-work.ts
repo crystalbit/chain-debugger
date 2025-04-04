@@ -13,32 +13,38 @@ export const execAnvilFork = async (rpcUrl: string): Promise<void> => {
     return Promise.resolve();
   }
   return new Promise((resolve, reject) => {
+    // Add environment variables to disable nightly warnings
+    const env = {
+      ...process.env,
+      FOUNDRY_DISABLE_NIGHTLY_WARNING: "true"
+    };
+
     anvilSingleton = spawn("anvil", [
       "-p",
       PORT.toString(),
       "--auto-impersonate",
       "--fork-url",
       rpcUrl,
-    ]);
-  
+    ], { env });
+
     anvilSingleton.stdout.on('data', (_data) => {
       // console.log(`stdout: ${_data}`);
       // TODO check "Listening on 127.0.0.1:9997"
       resolve();
     });
-    
+
     anvilSingleton.stderr.on('data', (data) => {
       console.error(`stderr: ${data}`);
       anvilSingleton?.kill();
       anvilSingleton = null;
       reject();
     });
-    
+
     anvilSingleton.on('close', (_code) => {
       // console.log(`child process exited with code ${code}`);
       anvilSingleton = null;
       reject();
-    }); 
+    });
   });
 }
 

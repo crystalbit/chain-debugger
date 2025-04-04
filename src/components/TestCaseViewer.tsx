@@ -45,7 +45,20 @@ import {
   ArrowDownward as MoveDownIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
-import { JsonFile, TestCase, Step, EmptyStep, SetBalanceStep } from '../types';
+import { JsonFile, TestCase, Step } from '../types';
+import {
+  StepRenderer,
+  StepActions,
+  EditDialog,
+  DeleteDialog,
+  ConvertDialog,
+  clearAllSteps,
+  addEmptyStep,
+  deleteStep,
+  duplicateStep,
+  moveStep,
+  updateStep
+} from './steps';
 
 interface TestCaseViewerProps {
   file: JsonFile;
@@ -71,11 +84,12 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     spender: '',
     amount: '',
     signature: '',
-    arguments: ''
+    arguments: '',
+    deploymentBytecode: ''
   });
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [stepToConvert, setStepToConvert] = useState<number | null>(null);
-  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | null>(null);
+  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | null>(null);
 
   // Add listener for step completion events
   useEffect(() => {
@@ -117,21 +131,16 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
 
   const handleSimulate = async () => {
     if (!testCase) return;
-    
+
     setIsSimulating(true);
     setError(null); // Clear any previous errors
     setProcessingStep(0);
-    
+
     try {
       // Clear all statuses and traces
       const cleanedTestCase = {
         ...testCase,
-        steps: testCase.steps.map(step => ({
-          ...step,
-          status: undefined,
-          trace: undefined,
-          result: undefined
-        }))
+        steps: clearAllSteps(testCase.steps)
       };
       setTestCase(cleanedTestCase);
 
@@ -167,42 +176,20 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     }
   };
 
-  const clearAllSteps = (steps: Step[]): Step[] => {
-    return steps.map(step => ({
-      ...step,
-      status: undefined,
-      trace: undefined,
-      result: undefined
-    }));
-  };
-
   const handleAddEmptyStep = async (index: number) => {
     if (!testCase) return;
 
-    const newStep: EmptyStep = {
-      type: 'empty',
-      name: `Empty Step ${testCase.steps.length + 1}`
-    };
-
-    const newSteps = [...testCase.steps];
-    newSteps.splice(index, 0, newStep);
-
-    const updatedTestCase = {
-      ...testCase,
-      steps: newSteps
-    };
-
+    const updatedTestCase = addEmptyStep(testCase, index);
     setTestCase(updatedTestCase);
 
     // Update file's step count
-    file.stepCount = newSteps.length;
+    file.stepCount = updatedTestCase.steps.length;
 
     // Save the updated test case to file
     try {
       await window.electronAPI.writeFile(file.path, JSON.stringify(updatedTestCase, null, 2));
     } catch (err) {
       console.error('Error saving test case:', err);
-      // Optionally show an error message to the user
       setError('Failed to save test case');
     }
   };
@@ -210,18 +197,11 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const handleDeleteStep = async (index: number) => {
     if (!testCase) return;
 
-    const newSteps = [...testCase.steps];
-    newSteps.splice(index, 1);
-
-    const updatedTestCase = {
-      ...testCase,
-      steps: clearAllSteps(newSteps)
-    };
-
+    const updatedTestCase = deleteStep(testCase, index);
     setTestCase(updatedTestCase);
 
     // Update file's step count
-    file.stepCount = newSteps.length;
+    file.stepCount = updatedTestCase.steps.length;
 
     // Save the updated test case to file
     try {
@@ -243,24 +223,11 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const handleDuplicateStep = async (index: number) => {
     if (!testCase) return;
 
-    const stepToDuplicate = testCase.steps[index];
-    const newStep = {
-      ...stepToDuplicate,
-      name: `${stepToDuplicate.name} (Copy)`
-    };
-
-    const newSteps = [...testCase.steps];
-    newSteps.splice(index + 1, 0, newStep);
-
-    const updatedTestCase = {
-      ...testCase,
-      steps: clearAllSteps(newSteps)
-    };
-
+    const updatedTestCase = duplicateStep(testCase, index);
     setTestCase(updatedTestCase);
 
     // Update file's step count
-    file.stepCount = newSteps.length;
+    file.stepCount = updatedTestCase.steps.length;
 
     // Save the updated test case to file
     try {
@@ -274,15 +241,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const handleMoveStep = async (fromIndex: number, toIndex: number) => {
     if (!testCase) return;
 
-    const newSteps = [...testCase.steps];
-    const [movedStep] = newSteps.splice(fromIndex, 1);
-    newSteps.splice(toIndex, 0, movedStep);
-
-    const updatedTestCase = {
-      ...testCase,
-      steps: clearAllSteps(newSteps)
-    };
-
+    const updatedTestCase = moveStep(testCase, fromIndex, toIndex);
     setTestCase(updatedTestCase);
 
     // Save the updated test case to file
@@ -306,24 +265,25 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     const step = testCase.steps[index];
     // Don't allow editing empty steps
     if (step.type === 'empty') return;
-    if (!['set_balance', 'transfer', 'approve', 'transaction'].includes(step.type)) return;
+    if (!['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract'].includes(step.type)) return;
 
     setStepToEdit({ index, step });
     setEditForm({
       name: step.name,
       address: step.type === 'set_balance' ? step.address : '',
-      value: step.type === 'set_balance' ? step.value : '',
-      from: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' ? step.from : '',
-      to: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' ? step.to : '',
+      value: step.type === 'set_balance' || step.type === 'transfer' ? step.value : '',
+      from: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' || step.type === 'deploy_contract' ? step.from : '',
+      to: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' || step.type === 'deploy_contract' ? step.to : '',
       spender: step.type === 'approve' ? step.spender : '',
       amount: step.type === 'approve' ? step.amount : '',
       signature: step.type === 'transaction' ? step.signature : '',
-      arguments: step.type === 'transaction' ? step.arguments : ''
+      arguments: step.type === 'transaction' ? step.arguments : '',
+      deploymentBytecode: step.type === 'deploy_contract' ? step.deploymentBytecode : ''
     });
     setEditDialogOpen(true);
   };
 
-  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction') => {
+  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract') => {
     if (!testCase || stepToConvert === null) return;
 
     const step = testCase.steps[stepToConvert];
@@ -331,10 +291,10 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
 
     setNewStepType(type);
     setStepToEdit({ index: stepToConvert, step });
-    
+
     // Set up the edit form with default values for the new step type
     setEditForm({
-      name: `${type.charAt(0).toUpperCase() + type.slice(1)} Step`,
+      name: `${type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} Step`,
       address: '',
       value: '',
       from: '',
@@ -342,7 +302,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       spender: '',
       amount: '',
       signature: '',
-      arguments: ''
+      arguments: '',
+      deploymentBytecode: ''
     });
 
     setConvertDialogOpen(false);
@@ -352,103 +313,19 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
   const handleSaveEdit = async () => {
     if (!testCase || !stepToEdit) return;
 
-    const newSteps = [...testCase.steps];
-    let updatedStep: Step;
-
-    // If this is a conversion from empty step
-    if (stepToEdit.step.type === 'empty' && newStepType) {
-      switch (newStepType) {
-        case 'set_balance':
-          updatedStep = {
-            type: 'set_balance',
-            name: editForm.name,
-            address: editForm.address,
-            value: editForm.value
-          };
-          break;
-        case 'transfer':
-          updatedStep = {
-            type: 'transfer',
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            value: editForm.value
-          };
-          break;
-        case 'approve':
-          updatedStep = {
-            type: 'approve',
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            spender: editForm.spender,
-            amount: editForm.amount
-          };
-          break;
-        case 'transaction':
-          updatedStep = {
-            type: 'transaction',
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            signature: editForm.signature,
-            arguments: editForm.arguments
-          };
-          break;
-        default:
-          return;
-      }
-    } else {
-      // Regular edit logic
-      switch (stepToEdit.step.type) {
-        case 'set_balance':
-          updatedStep = {
-            ...stepToEdit.step,
-            name: editForm.name,
-            address: editForm.address,
-            value: editForm.value
-          } as SetBalanceStep;
-          break;
-        case 'transfer':
-          updatedStep = {
-            ...stepToEdit.step,
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            value: editForm.value
-          };
-          break;
-        case 'approve':
-          updatedStep = {
-            ...stepToEdit.step,
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            spender: editForm.spender,
-            amount: editForm.amount
-          };
-          break;
-        case 'transaction':
-          updatedStep = {
-            ...stepToEdit.step,
-            name: editForm.name,
-            from: editForm.from,
-            to: editForm.to,
-            signature: editForm.signature,
-            arguments: editForm.arguments
-          };
-          break;
-        default:
-          return;
-      }
-    }
-
-    newSteps[stepToEdit.index] = updatedStep;
-
-    const updatedTestCase = {
-      ...testCase,
-      steps: clearAllSteps(newSteps)
-    };
+    const updatedTestCase = updateStep(testCase, stepToEdit.index, {
+      name: editForm.name,
+      type: newStepType || stepToEdit.step.type as any,
+      address: editForm.address,
+      value: editForm.value,
+      from: editForm.from,
+      to: editForm.to,
+      spender: editForm.spender,
+      amount: editForm.amount,
+      signature: editForm.signature,
+      arguments: editForm.arguments,
+      deploymentBytecode: editForm.deploymentBytecode
+    });
 
     setTestCase(updatedTestCase);
 
@@ -464,290 +341,6 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     setStepToEdit(null);
     setNewStepType(null);
     setStepToConvert(null);
-  };
-
-  const renderStep = (step: Step, index: number) => {
-    const isTransfer = step.type === 'transfer';
-    const isApprove = step.type === 'approve';
-    const isSetBalance = step.type === 'set_balance';
-    const isEmpty = step.type === 'empty';
-    const isExpanded = expandedTraces[index];
-    const hasSimulationData = !isEmpty && step.status !== undefined;
-    const isProcessing = !isEmpty && processingStep === index;
-    const hasTrace = !isEmpty && 'trace' in step && step.trace;
-    
-    return (
-      <ListItem sx={{
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        bgcolor: hasSimulationData && step.status === 'failed' ? 'error.light' : 'transparent'
-      }}>
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', mb: hasTrace ? 1 : 0 }}>
-          <ListItemIcon>
-            {isTransfer ? (
-              <TransferIcon color="primary" />
-            ) : isApprove ? (
-              <ApproveIcon color="warning" />
-            ) : isSetBalance ? (
-              <SetBalanceIcon color="success" sx={{ fontSize: '1.5rem' }} />
-            ) : isEmpty ? (
-              <CheckCircleIcon color="disabled" />
-            ) : (
-              <TransactionIcon color="info" />
-            )}
-          </ListItemIcon>
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="subtitle1">{step.name}</Typography>
-              {isProcessing && <CircularProgress size={16} />}
-              {'status' in step && step.status && (
-                <Chip
-                  size="small"
-                  label={step.status}
-                  color={getStatusColor(step.status)}
-                  icon={step.status === 'success' ? <SuccessIcon /> : <ErrorIcon />}
-                />
-              )}
-            </Box>
-            <Box sx={{ mt: 1 }}>
-              {step.type === "set_balance" ? (
-                <>
-                  <Typography component="div" variant="body2" color="text.primary">
-                    Address: {step.address}
-                  </Typography>
-                  <Typography component="div" variant="body2" color="text.primary">
-                    Value: {step.value}
-                  </Typography>
-                </>
-              ) : step.type === "empty" ? (
-                <Typography component="div" variant="body2" color="text.secondary">
-                  Empty step
-                </Typography>
-              ) : (
-                <>
-                  <Typography component="div" variant="body2" color="text.primary">
-                    From: {step.from}
-                  </Typography>
-                  <Typography component="div" variant="body2" color="text.primary">
-                    To: {step.to}
-                  </Typography>
-                  {isTransfer ? (
-                    <Typography component="div" variant="body2" color="text.primary">
-                      Value: {step.value}
-                    </Typography>
-                  ) : isApprove ? (
-                    <>
-                      <Typography component="div" variant="body2" color="text.primary">
-                        Spender: {step.spender}
-                      </Typography>
-                      <Typography component="div" variant="body2" color="text.primary">
-                        Amount: {step.amount}
-                      </Typography>
-                    </>
-                  ) : (
-                    <>
-                      <Typography component="div" variant="body2" color="text.primary">
-                        Signature: {step.signature}
-                      </Typography>
-                      <Typography component="div" variant="body2" color="text.primary">
-                        Arguments: {step.arguments}
-                      </Typography>
-                    </>
-                  )}
-                </>
-              )}
-            </Box>
-          </Box>
-          {hasSimulationData && hasTrace && (
-            <IconButton onClick={() => toggleTrace(index)} sx={{ mt: 1 }}>
-              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
-          )}
-        </Box>
-
-        {hasSimulationData && (step.trace || step.result) && (
-          <Collapse in={isExpanded} sx={{ width: '100%' }}>
-            <Box sx={{ pl: 7, pr: 2, pb: 2, width: '100%', overflow: 'hidden' }}>
-              {step.result && (
-                <Alert 
-                  severity="error" 
-                  sx={{ 
-                    mb: 2, 
-                    width: '100%',
-                    '& .MuiAlert-message': {
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
-                      overflowWrap: 'break-word'
-                    }
-                  }}
-                >
-                  {step.result}
-                </Alert>
-              )}
-              {step.trace && (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    bgcolor: 'grey.900',
-                    maxHeight: '400px',
-                    overflow: 'auto',
-                    width: '100%'
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    component="pre"
-                    sx={{
-                      fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
-                      color: 'common.white',
-                      m: 0,
-                      width: '100%',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {step.trace}
-                  </Typography>
-                </Paper>
-              )}
-            </Box>
-          </Collapse>
-        )}
-      </ListItem>
-    );
-  };
-
-  const renderEditDialog = () => {
-    if (!stepToEdit) return null;
-
-    const stepType = newStepType || stepToEdit.step.type;
-    const title = `Edit ${stepType.charAt(0).toUpperCase() + stepType.slice(1)} Step`;
-
-    return (
-      <Dialog
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <TextField
-              label="Name"
-              value={editForm.name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-              fullWidth
-            />
-            {stepType === 'set_balance' && (
-              <>
-                <TextField
-                  label="Address"
-                  value={editForm.address}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Value"
-                  value={editForm.value}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, value: e.target.value }))}
-                  fullWidth
-                />
-              </>
-            )}
-            {stepType === 'transfer' && (
-              <>
-                <TextField
-                  label="From"
-                  value={editForm.from}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, from: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="To"
-                  value={editForm.to}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, to: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Value"
-                  value={editForm.value}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, value: e.target.value }))}
-                  fullWidth
-                />
-              </>
-            )}
-            {stepType === 'approve' && (
-              <>
-                <TextField
-                  label="From"
-                  value={editForm.from}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, from: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="To"
-                  value={editForm.to}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, to: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Spender"
-                  value={editForm.spender}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, spender: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Amount"
-                  value={editForm.amount}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))}
-                  fullWidth
-                />
-              </>
-            )}
-            {stepType === 'transaction' && (
-              <>
-                <TextField
-                  label="From"
-                  value={editForm.from}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, from: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="To"
-                  value={editForm.to}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, to: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Signature"
-                  value={editForm.signature}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, signature: e.target.value }))}
-                  fullWidth
-                />
-                <TextField
-                  label="Arguments"
-                  value={editForm.arguments}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, arguments: e.target.value }))}
-                  fullWidth
-                />
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={handleSaveEdit}
-            variant="contained"
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-    );
   };
 
   return (
@@ -804,7 +397,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                 </Typography>
               </CardContent>
             </Card>
-            
+
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Steps
@@ -812,10 +405,10 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
               <List>
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 0.5 }}>
                   <Tooltip title="Add empty step">
-                    <IconButton 
-                      size="small" 
+                    <IconButton
+                      size="small"
                       onClick={() => handleAddEmptyStep(0)}
-                      sx={{ 
+                      sx={{
                         opacity: 0.5,
                         '&:hover': { opacity: 1 },
                         transform: 'scale(0.8)'
@@ -830,116 +423,25 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
                     {index > 0 && <Divider />}
                     <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
                       <Box sx={{ flex: 1 }}>
-                        {renderStep(step, index)}
+                        <StepRenderer
+                          step={step}
+                          index={index}
+                          isExpanded={expandedTraces[index]}
+                          processingStep={processingStep}
+                          toggleTrace={toggleTrace}
+                        />
                       </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1, alignItems: 'center' }}>
-                        {/* First row - Add and Duplicate */}
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Tooltip title="Add empty step">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleAddEmptyStep(index + 1)}
-                              sx={{ 
-                                opacity: 0.5,
-                                '&:hover': { opacity: 1 },
-                                transform: 'scale(0.8)'
-                              }}
-                            >
-                              <AddIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Duplicate step">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleDuplicateStep(index)}
-                              sx={{ 
-                                opacity: 0.5,
-                                '&:hover': { opacity: 1 },
-                                transform: 'scale(0.8)'
-                              }}
-                            >
-                              <DuplicateIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                        {/* Second row - Move Up/Down */}
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Tooltip title="Move up">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleMoveStep(index, index - 1)}
-                              disabled={index === 0}
-                              sx={{ 
-                                opacity: 0.5,
-                                '&:hover': { opacity: 1 },
-                                transform: 'scale(0.8)'
-                              }}
-                            >
-                              <MoveUpIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Move down">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleMoveStep(index, index + 1)}
-                              disabled={index === testCase.steps.length - 1}
-                              sx={{ 
-                                opacity: 0.5,
-                                '&:hover': { opacity: 1 },
-                                transform: 'scale(0.8)'
-                              }}
-                            >
-                              <MoveDownIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                        {/* Third row - Edit/Convert and Delete */}
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          {step.type === 'empty' ? (
-                            <Tooltip title="Convert step">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleConvertStep(index)}
-                                sx={{ 
-                                  opacity: 0.5,
-                                  '&:hover': { opacity: 1 },
-                                  transform: 'scale(0.8)'
-                                }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : ['set_balance', 'transfer', 'approve', 'transaction'].includes(step.type) && (
-                            <Tooltip title="Edit step">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleEditStep(index)}
-                                sx={{ 
-                                  opacity: 0.5,
-                                  '&:hover': { opacity: 1 },
-                                  transform: 'scale(0.8)'
-                                }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title="Delete step">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => openDeleteDialog(index)}
-                              sx={{ 
-                                opacity: 0.5,
-                                '&:hover': { opacity: 1 },
-                                transform: 'scale(0.8)',
-                                color: 'error.main'
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </Box>
+                      <StepActions
+                        step={step}
+                        index={index}
+                        stepsLength={testCase.steps.length}
+                        onAddEmptyStep={handleAddEmptyStep}
+                        onDeleteStep={openDeleteDialog}
+                        onDuplicateStep={handleDuplicateStep}
+                        onMoveStep={handleMoveStep}
+                        onEditStep={handleEditStep}
+                        onConvertStep={handleConvertStep}
+                      />
                     </Box>
                   </React.Fragment>
                 ))}
@@ -953,76 +455,28 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
         )}
       </Box>
 
-      <Dialog
+      {/* Dialogs */}
+      <DeleteDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Delete Step</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this step? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={() => stepToDelete !== null && handleDeleteStep(stepToDelete)}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDelete={() => stepToDelete !== null && handleDeleteStep(stepToDelete)}
+      />
 
-      {renderEditDialog()}
+      <EditDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        stepToEdit={stepToEdit}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onSave={handleSaveEdit}
+        newStepType={newStepType}
+      />
 
-      <Dialog
+      <ConvertDialog
         open={convertDialogOpen}
         onClose={() => setConvertDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Convert Empty Step</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Select the type of step to convert to:
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button
-              variant="outlined"
-              onClick={() => handleStepTypeSelect('set_balance')}
-              startIcon={<SetBalanceIcon />}
-            >
-              Set Balance
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleStepTypeSelect('transfer')}
-              startIcon={<TransferIcon />}
-            >
-              Transfer
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleStepTypeSelect('approve')}
-              startIcon={<ApproveIcon />}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleStepTypeSelect('transaction')}
-              startIcon={<TransactionIcon />}
-            >
-              Transaction
-            </Button>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConvertDialogOpen(false)}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
+        onSelectType={handleStepTypeSelect}
+      />
     </Box>
   );
 } 

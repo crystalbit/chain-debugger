@@ -52,7 +52,12 @@ export type EmptyStep = BaseStep & {
   type: "empty";
 };
 
-export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep;
+export type DeployContractStep = BaseTransactionStep & {
+  type: "deploy_contract";
+  deploymentBytecode: string;
+};
+
+export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep | DeployContractStep;
 
 declare global {
   interface Window {

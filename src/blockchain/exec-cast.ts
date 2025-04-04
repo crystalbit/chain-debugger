@@ -3,7 +3,13 @@ import { exec } from "child_process";
 
 export const execCommand = async (command: string, noError = false): Promise<string> => {
   return new Promise((resolve, reject) => {
-    exec(command, (error: any, stdout: string, stderr: any) => {
+    // Add environment variables to disable nightly warnings
+    const env = {
+      ...process.env,
+      FOUNDRY_DISABLE_NIGHTLY_WARNING: "true"
+    };
+
+    exec(command, { env }, (error: any, stdout: string, stderr: any) => {
       if (error && !noError) {
         // console.error(`exec error: ${error}`);
         reject(error);

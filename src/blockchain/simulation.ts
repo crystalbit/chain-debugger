@@ -13,6 +13,7 @@ import {
   transferStepHandler,
   approveStepHandler,
   setBalanceStepHandler,
+  deployContractStepHandler,
   StepHandler,
   updateStepStatus
 } from "./steps";
@@ -22,7 +23,8 @@ const handlers: Array<StepHandler<any>> = [
   transactionStepHandler,
   transferStepHandler,
   approveStepHandler,
-  setBalanceStepHandler
+  setBalanceStepHandler,
+  deployContractStepHandler
 ];
 
 const setEnvironment = async (rpcUrl: string) => {
@@ -42,12 +44,12 @@ const toWei = (value: string): string => {
     const [number] = value.split(' ether');
     const [whole, decimal] = number.split('.');
     const decimalPlaces = decimal ? decimal.length : 0;
-    
+
     // Pad with zeros to get to 18 decimal places
-    const paddedNumber = decimal 
+    const paddedNumber = decimal
       ? whole + decimal.padEnd(18, '0').slice(0, 18)
       : whole + '0'.repeat(18);
-    
+
     return paddedNumber;
   }
   return value;
@@ -56,12 +58,6 @@ const toWei = (value: string): string => {
 const toHex = (value: string): string => {
   return '0x' + BigInt(value).toString(16);
 };
-
-const isTransactionStep = (step: Step): step is TransactionStep => step.type === "transaction";
-const isTransferStep = (step: Step): step is TransferStep => step.type === "transfer";
-const isApproveStep = (step: Step): step is ApproveStep => step.type === "approve";
-const isSetBalanceStep = (step: Step): step is SetBalanceStep => step.type === "set_balance";
-const isEmptyStep = (step: Step): step is EmptyStep => step.type === "empty";
 
 const processStep = async (
   step: Step,

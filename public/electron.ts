@@ -1,12 +1,12 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
-import type { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { terminateAnvil } from '../src/blockchain/fork-work';
 import { simulateTestCase } from '../src/blockchain/simulation';
-import { hang } from 'process';
 
 const isDev = process.env.NODE_ENV === 'development';
+// Alternative way to detect development mode - check if using the dev script
+const isDevScript = process.argv.some(arg => arg.includes('electron-dev') || arg.includes('electron .'));
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -24,8 +24,8 @@ const storage = {
   },
   set: (key: string, value: any) => {
     try {
-      const data = fs.existsSync(storagePath) 
-        ? JSON.parse(fs.readFileSync(storagePath, 'utf-8')) 
+      const data = fs.existsSync(storagePath)
+        ? JSON.parse(fs.readFileSync(storagePath, 'utf-8'))
         : {};
       data[key] = value;
       fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf-8');
@@ -46,9 +46,10 @@ function createWindow() {
     }
   });
 
-  if (isDev) {
+  if (isDev || isDevScript) {
     mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
+    // Always open DevTools in development mode
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadURL(`file://${path.join(__dirname, '../../build/index.html')}`);
   }
@@ -79,12 +80,12 @@ function registerHandlers() {
           // Read the current state of the file to get the updated step
           const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
           const step = content.steps[stepIndex];
-          
+
           // Emit step completion event
-          event.sender.send('step-complete', { 
-            index: stepIndex, 
-            status, 
-            step 
+          event.sender.send('step-complete', {
+            index: stepIndex,
+            status,
+            step
           });
         }
       );
