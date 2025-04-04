@@ -4,4 +4,6 @@ export * from './transaction';
 export * from './transfer';
 export * from './approve';
 export * from './set-balance';
-export * from './deploy-contract'; 
+export * from './deploy-contract';
+export * from './check-balance';
+export * from './check-token-balance'; 

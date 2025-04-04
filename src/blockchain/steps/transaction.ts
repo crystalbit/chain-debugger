@@ -16,12 +16,17 @@ export const transactionStepHandler: StepHandler<TransactionStep> = {
 
   process: async (step: TransactionStep, stepIndex: number, context: StepContext) => {
     const { rpcUrl, filePath, testCase, onStepComplete } = context;
-    const command = `cast send ${step.to} "${escapeArgument(step.signature)}" "${escapeArgument(step.arguments)}" --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
+
+    // Separate signature and arguments
+    const signature = step.signature;
+    const args = step.arguments ? step.arguments.split(' ') : [];
+
+    const command = `cast send ${step.to} "${signature}" ${args.join(' ')} --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
 
     try {
       console.log(`Executing command: ${command}`);
       const result = await execCommand(command);
-      console.log(`Command result: ${result}`);
+      console.log(`Command result: ${JSON.stringify(result)}`);
 
       const resultData = getResultData(result);
       console.log(`Parsed result data:`, resultData);
@@ -29,17 +34,24 @@ export const transactionStepHandler: StepHandler<TransactionStep> = {
       if (resultData.status === 1) {
         const traceCommand = `cast run ${resultData.hash} --rpc-url ${rpcUrl}`;
         console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand);
-        console.log(`Trace result: ${trace}`);
+        const traceResult = await execCommand(traceCommand);
+        console.log(`Trace result: ${JSON.stringify(traceResult)}`);
 
-        updateStepStatus(step, 'success', trace);
-      } else {
-        const traceCommand = `cast call ${step.to} "${escapeArgument(step.signature)}" "${escapeArgument(step.arguments)}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+        updateStepStatus(step, 'success', traceResult.stdout);
+      } else if (resultData.hash) {
+        const traceCommand = `cast run ${resultData.hash} --rpc-url ${rpcUrl}`;
         console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand, true);
-        console.log(`Trace result: ${trace}`);
+        const traceResult = await execCommand(traceCommand, true);
+        console.log(`Trace result: ${JSON.stringify(traceResult)}`);
 
-        updateStepStatus(step, 'failed', trace, result);
+        updateStepStatus(step, 'failed', traceResult.stdout, result.stdout);
+      } else {
+        const traceCommand = `cast call ${step.to} "${signature}" ${args.join(' ')} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+        console.log(`Getting trace with command: ${traceCommand}`);
+        const traceResult = await execCommand(traceCommand, true);
+        console.log(`Trace result: ${JSON.stringify(traceResult)}`);
+
+        updateStepStatus(step, 'failed', traceResult.stdout, result.stdout);
       }
 
       // Update the step in the test case array
@@ -53,11 +65,11 @@ export const transactionStepHandler: StepHandler<TransactionStep> = {
       console.error(`Error processing transaction step ${step.name}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      const traceCommand = `cast call ${step.to} "${escapeArgument(step.signature)}" "${escapeArgument(step.arguments)}" --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+      const traceCommand = `cast call ${step.to} "${signature}" ${args.join(' ')} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
       console.log(`Getting trace with command: ${traceCommand}`);
-      const trace = await execCommand(traceCommand, true);
+      const traceResult = await execCommand(traceCommand, true);
 
-      updateStepStatus(step, 'failed', trace, errorMessage);
+      updateStepStatus(step, 'failed', traceResult.stdout, errorMessage);
 
       // Update the step in the test case array
       testCase.steps[stepIndex] = step;

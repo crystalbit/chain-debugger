@@ -65,11 +65,12 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     amount: '',
     signature: '',
     arguments: '',
-    deploymentBytecode: ''
+    deploymentBytecode: '',
+    token: '',
   });
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [stepToConvert, setStepToConvert] = useState<number | null>(null);
-  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | null>(null);
+  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | null>(null);
   const [isEditingRpcUrl, setIsEditingRpcUrl] = useState(false);
   const [newRpcUrl, setNewRpcUrl] = useState('');
 
@@ -245,14 +246,12 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     if (!testCase) return;
 
     const step = testCase.steps[index];
-    // Don't allow editing empty steps
-    if (step.type === 'empty') return;
-    if (!['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract'].includes(step.type)) return;
+    if (!['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract', 'check_balance', 'check_token_balance'].includes(step.type)) return;
 
     setStepToEdit({ index, step });
     setEditForm({
       name: step.name,
-      address: step.type === 'set_balance' ? step.address : '',
+      address: step.type === 'set_balance' || step.type === 'check_balance' || step.type === 'check_token_balance' ? step.address : '',
       value: step.type === 'set_balance' || step.type === 'transfer' ? step.value : '',
       from: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' || step.type === 'deploy_contract' ? step.from : '',
       to: step.type === 'transfer' || step.type === 'approve' || step.type === 'transaction' || step.type === 'deploy_contract' ? step.to : '',
@@ -260,12 +259,13 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       amount: step.type === 'approve' ? step.amount : '',
       signature: step.type === 'transaction' ? step.signature : '',
       arguments: step.type === 'transaction' ? step.arguments : '',
-      deploymentBytecode: step.type === 'deploy_contract' ? step.deploymentBytecode : ''
+      deploymentBytecode: step.type === 'deploy_contract' ? step.deploymentBytecode : '',
+      token: step.type === 'check_token_balance' ? step.token : '',
     });
     setEditDialogOpen(true);
   };
 
-  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract') => {
+  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance') => {
     if (!testCase || stepToConvert === null) return;
 
     const step = testCase.steps[stepToConvert];
@@ -285,7 +285,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       amount: '',
       signature: '',
       arguments: '',
-      deploymentBytecode: ''
+      deploymentBytecode: '',
+      token: '',
     });
 
     setConvertDialogOpen(false);
@@ -306,7 +307,8 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       amount: editForm.amount,
       signature: editForm.signature,
       arguments: editForm.arguments,
-      deploymentBytecode: editForm.deploymentBytecode
+      deploymentBytecode: editForm.deploymentBytecode,
+      token: editForm.token,
     });
 
     setTestCase(updatedTestCase);

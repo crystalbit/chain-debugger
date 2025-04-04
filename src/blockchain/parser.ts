@@ -1,3 +1,5 @@
+import { CommandResult } from './exec-cast';
+
 export type TxResult = {
   hash: string;
   status: number;
@@ -25,8 +27,9 @@ authorizationList
 to                      0xb05C35133C01C7193F09079eAeF97F693aE0E552
 */
 
-export const getResultData = (result: string): TxResult => {
-  const lines = result.split("\n");
+export const getResultData = (result: string | CommandResult): TxResult => {
+  const resultStr = typeof result === 'string' ? result : result.stdout;
+  const lines = resultStr.split("\n");
   const data: any = {};
   for (const line of lines) {
     if (line.includes("transactionHash")) {

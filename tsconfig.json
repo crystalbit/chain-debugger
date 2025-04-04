@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "target": "es2016",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -18,8 +22,18 @@
     "outDir": "build",
     "noEmit": false,
     "rootDir": ".",
-    "types": ["node", "electron"]
+    "types": [
+      "node",
+      "electron"
+    ]
   },
-  "include": ["src/**/*", "public/**/*", "bin/**/*"],
-  "exclude": ["node_modules", "build"]
-} 
+  "include": [
+    "src/**/*",
+    "public/**/*",
+    "bin/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "build"
+  ]
+}

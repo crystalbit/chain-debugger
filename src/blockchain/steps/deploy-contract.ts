@@ -9,12 +9,13 @@ export const deployContractStepHandler: StepHandler<DeployContractStep> = {
 
   process: async (step: DeployContractStep, stepIndex: number, context: StepContext) => {
     const { rpcUrl, filePath, testCase, onStepComplete } = context;
-    const command = `cast send --from ${step.from} --unlocked --rpc-url ${rpcUrl} --create ${step.deploymentBytecode}`;
+
+    const command = `cast send --create ${step.deploymentBytecode} --from ${step.from} --unlocked --rpc-url ${rpcUrl}`;
 
     try {
       console.log(`Executing command: ${command}`);
       const result = await execCommand(command);
-      console.log(`Command result: ${result}`);
+      console.log(`Command result: ${JSON.stringify(result)}`);
 
       const resultData = getResultData(result);
       console.log(`Parsed result data:`, resultData);
@@ -22,25 +23,17 @@ export const deployContractStepHandler: StepHandler<DeployContractStep> = {
       if (resultData.status === 1) {
         const traceCommand = `cast run ${resultData.hash} --rpc-url ${rpcUrl}`;
         console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand);
-        console.log(`Trace result: ${trace}`);
+        const traceResult = await execCommand(traceCommand);
+        console.log(`Trace result: ${JSON.stringify(traceResult)}`);
 
-        // Extract the deployed contract address from the result
-        const deployedAddress = "0x"; // resultData.contractAddress;
-        if (deployedAddress) {
-          // Add the deployed address to the step result for reference
-          step.result = `Deployed at: ${deployedAddress}\n${result}`;
-        }
-
-        updateStepStatus(step, 'success', trace);
+        updateStepStatus(step, 'success', traceResult.stdout);
       } else {
-        // If the transaction status is not 1, the deployment failed
-        const traceCommand = `cast run ${resultData.hash} --rpc-url ${rpcUrl}`;
+        const traceCommand = `cast call --create ${step.deploymentBytecode} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
         console.log(`Getting trace with command: ${traceCommand}`);
-        const trace = await execCommand(traceCommand, true);
-        console.log(`Trace result: ${trace}`);
+        const traceResult = await execCommand(traceCommand, true);
+        console.log(`Trace result: ${JSON.stringify(traceResult)}`);
 
-        updateStepStatus(step, 'failed', trace, result);
+        updateStepStatus(step, 'failed', traceResult.stdout, result.stdout);
       }
 
       // Update the step in the test case array
@@ -54,8 +47,11 @@ export const deployContractStepHandler: StepHandler<DeployContractStep> = {
       console.error(`Error processing deploy contract step ${step.name}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Since we can't call the contract creation directly, we'll just update the status
-      updateStepStatus(step, 'failed', undefined, errorMessage);
+      const traceCommand = `cast call --create ${step.deploymentBytecode} --from ${step.from} --rpc-url ${rpcUrl} --trace`;
+      console.log(`Getting trace with command: ${traceCommand}`);
+      const traceResult = await execCommand(traceCommand, true);
+
+      updateStepStatus(step, 'failed', traceResult.stdout, errorMessage);
 
       // Update the step in the test case array
       testCase.steps[stepIndex] = step;

@@ -23,7 +23,9 @@ import {
   TransferStepRenderer,
   ApproveStepRenderer,
   TransactionStepRenderer,
-  DeployContractStepRenderer
+  DeployContractStepRenderer,
+  CheckBalanceStepRenderer,
+  CheckTokenBalanceStepRenderer
 } from './types';
 
 interface StepRendererProps {
@@ -72,6 +74,10 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
         return <TransactionStepRenderer step={step} />;
       case 'deploy_contract':
         return <DeployContractStepRenderer step={step} />;
+      case 'check_balance':
+        return <CheckBalanceStepRenderer step={step} />;
+      case 'check_token_balance':
+        return <CheckTokenBalanceStepRenderer step={step} />;
       default:
         return <Typography variant="body2">Unknown step type</Typography>;
     }

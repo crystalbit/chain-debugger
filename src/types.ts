@@ -57,7 +57,18 @@ export type DeployContractStep = BaseTransactionStep & {
   deploymentBytecode: string;
 };
 
-export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep | DeployContractStep;
+export type CheckBalanceStep = BaseStep & {
+  type: "check_balance";
+  address: string;
+};
+
+export type CheckTokenBalanceStep = BaseStep & {
+  type: "check_token_balance";
+  token: string;
+  address: string;
+};
+
+export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep | DeployContractStep | CheckBalanceStep | CheckTokenBalanceStep;
 
 declare global {
   interface Window {

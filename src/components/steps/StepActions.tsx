@@ -115,7 +115,7 @@ export const StepActions: React.FC<StepActionsProps> = ({
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-        ) : ['set_balance', 'transfer', 'approve', 'transaction'].includes(step.type) && (
+        ) : ['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract', 'check_balance', 'check_token_balance'].includes(step.type) && (
           <Tooltip title="Edit step">
             <IconButton
               size="small"

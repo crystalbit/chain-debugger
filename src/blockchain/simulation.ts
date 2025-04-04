@@ -6,7 +6,7 @@
 import fs from "fs";
 import { execAnvilFork, PORT, terminateAnvil } from "./fork-work";
 import { execCommand } from "./exec-cast";
-import { Step, TransactionStep, TransferStep, ApproveStep, SetBalanceStep, EmptyStep } from "../types";
+import { Step } from "../types";
 import {
   emptyStepHandler,
   transactionStepHandler,
@@ -14,6 +14,8 @@ import {
   approveStepHandler,
   setBalanceStepHandler,
   deployContractStepHandler,
+  checkBalanceStepHandler,
+  checkTokenBalanceStepHandler,
   StepHandler,
   updateStepStatus
 } from "./steps";
@@ -24,7 +26,9 @@ const handlers: Array<StepHandler<any>> = [
   transferStepHandler,
   approveStepHandler,
   setBalanceStepHandler,
-  deployContractStepHandler
+  deployContractStepHandler,
+  checkBalanceStepHandler,
+  checkTokenBalanceStepHandler
 ];
 
 const setEnvironment = async (rpcUrl: string) => {

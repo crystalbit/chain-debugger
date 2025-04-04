@@ -1,7 +1,11 @@
 import { exec } from "child_process";
 
+export interface CommandResult {
+  stdout: string;
+  stderr: string;
+}
 
-export const execCommand = async (command: string, noError = false): Promise<string> => {
+export const execCommand = async (command: string, noError = false): Promise<CommandResult> => {
   return new Promise((resolve, reject) => {
     // Add environment variables to disable nightly warnings
     const env = {
@@ -20,7 +24,7 @@ export const execCommand = async (command: string, noError = false): Promise<str
         reject(stderr);
         return;
       }
-      resolve(stdout);
+      resolve({ stdout, stderr });
     });
   });
 }

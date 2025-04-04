@@ -5,6 +5,8 @@ import { createTransferStep } from './types/TransferStep';
 import { createApproveStep } from './types/ApproveStep';
 import { createTransactionStep } from './types/TransactionStep';
 import { createDeployContractStep } from './types/DeployContractStep';
+import { createCheckBalanceStep } from './types/CheckBalanceStep';
+import { createCheckTokenBalanceStep } from './types/CheckTokenBalanceStep';
 
 // Clears all simulation data from steps (status, trace, result)
 export const clearAllSteps = (steps: Step[]): Step[] => {
@@ -92,8 +94,7 @@ export const updateStep = (
   index: number,
   stepData: {
     name: string;
-    type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract';
-    address?: string;
+    type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance';
     value?: string;
     from?: string;
     to?: string;
@@ -102,6 +103,8 @@ export const updateStep = (
     signature?: string;
     arguments?: string;
     deploymentBytecode?: string;
+    token?: string;
+    address?: string;
   }
 ): TestCase => {
   if (!testCase) return testCase;
@@ -148,6 +151,19 @@ export const updateStep = (
         stepData.name,
         stepData.from || '',
         stepData.deploymentBytecode || ''
+      );
+      break;
+    case 'check_balance':
+      updatedStep = createCheckBalanceStep(
+        stepData.name,
+        stepData.address || ''
+      );
+      break;
+    case 'check_token_balance':
+      updatedStep = createCheckTokenBalanceStep(
+        stepData.name,
+        stepData.token || '',
+        stepData.address || ''
       );
       break;
     default:

@@ -14,7 +14,9 @@ import {
   Code as TransactionIcon,
   AccountBalance as SetBalanceIcon,
   VerifiedUser as ApproveIcon,
-  Code as DeployContractIcon
+  Code as DeployContractIcon,
+  AccountBalanceWallet as CheckBalanceIcon,
+  Token as CheckTokenBalanceIcon
 } from '@mui/icons-material';
 import { Step } from '../../types';
 
@@ -29,6 +31,7 @@ interface EditFormState {
   signature: string;
   arguments: string;
   deploymentBytecode: string;
+  token: string;
 }
 
 interface EditDialogProps {
@@ -38,7 +41,7 @@ interface EditDialogProps {
   editForm: EditFormState;
   setEditForm: React.Dispatch<React.SetStateAction<EditFormState>>;
   onSave: () => void;
-  newStepType: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | null;
+  newStepType: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | null;
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
@@ -183,6 +186,32 @@ export const EditDialog: React.FC<EditDialogProps> = ({
               />
             </>
           )}
+          {stepType === 'check_balance' && (
+            <>
+              <TextField
+                label="Address"
+                value={editForm.address}
+                onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                fullWidth
+              />
+            </>
+          )}
+          {stepType === 'check_token_balance' && (
+            <>
+              <TextField
+                label="Token"
+                value={editForm.token}
+                onChange={(e) => setEditForm(prev => ({ ...prev, token: e.target.value }))}
+                fullWidth
+              />
+              <TextField
+                label="Address"
+                value={editForm.address}
+                onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                fullWidth
+              />
+            </>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
@@ -237,7 +266,7 @@ export const DeleteDialog: React.FC<DeleteDialogProps> = ({
 interface ConvertDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelectType: (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract') => void;
+  onSelectType: (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance') => void;
 }
 
 export const ConvertDialog: React.FC<ConvertDialogProps> = ({
@@ -292,6 +321,20 @@ export const ConvertDialog: React.FC<ConvertDialogProps> = ({
             startIcon={<DeployContractIcon />}
           >
             Deploy Contract
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => onSelectType('check_balance')}
+            startIcon={<CheckBalanceIcon />}
+          >
+            Check Balance
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => onSelectType('check_token_balance')}
+            startIcon={<CheckTokenBalanceIcon />}
+          >
+            Check Token Balance
           </Button>
         </Box>
       </DialogContent>
