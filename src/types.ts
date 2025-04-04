@@ -68,7 +68,12 @@ export type CheckTokenBalanceStep = BaseStep & {
   address: string;
 };
 
-export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep | DeployContractStep | CheckBalanceStep | CheckTokenBalanceStep;
+export type WaitStep = BaseStep & {
+  type: "wait";
+  seconds: string;
+};
+
+export type Step = EmptyStep | SetBalanceStep | TransferStep | ApproveStep | TransactionStep | DeployContractStep | CheckBalanceStep | CheckTokenBalanceStep | WaitStep;
 
 declare global {
   interface Window {

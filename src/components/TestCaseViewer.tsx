@@ -67,10 +67,11 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     arguments: '',
     deploymentBytecode: '',
     token: '',
+    seconds: '',
   });
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [stepToConvert, setStepToConvert] = useState<number | null>(null);
-  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | null>(null);
+  const [newStepType, setNewStepType] = useState<'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | 'wait' | null>(null);
   const [isEditingRpcUrl, setIsEditingRpcUrl] = useState(false);
   const [newRpcUrl, setNewRpcUrl] = useState('');
 
@@ -246,7 +247,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
     if (!testCase) return;
 
     const step = testCase.steps[index];
-    if (!['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract', 'check_balance', 'check_token_balance'].includes(step.type)) return;
+    if (!['set_balance', 'transfer', 'approve', 'transaction', 'deploy_contract', 'check_balance', 'check_token_balance', 'wait'].includes(step.type)) return;
 
     setStepToEdit({ index, step });
     setEditForm({
@@ -261,11 +262,12 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       arguments: step.type === 'transaction' ? step.arguments : '',
       deploymentBytecode: step.type === 'deploy_contract' ? step.deploymentBytecode : '',
       token: step.type === 'check_token_balance' ? step.token : '',
+      seconds: step.type === 'wait' ? step.seconds : '',
     });
     setEditDialogOpen(true);
   };
 
-  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance') => {
+  const handleStepTypeSelect = (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | 'wait') => {
     if (!testCase || stepToConvert === null) return;
 
     const step = testCase.steps[stepToConvert];
@@ -287,6 +289,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       arguments: '',
       deploymentBytecode: '',
       token: '',
+      seconds: '',
     });
 
     setConvertDialogOpen(false);
@@ -309,6 +312,7 @@ export function TestCaseViewer({ file, onBack }: TestCaseViewerProps) {
       arguments: editForm.arguments,
       deploymentBytecode: editForm.deploymentBytecode,
       token: editForm.token,
+      seconds: editForm.seconds,
     });
 
     setTestCase(updatedTestCase);

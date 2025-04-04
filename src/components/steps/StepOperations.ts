@@ -7,6 +7,7 @@ import { createTransactionStep } from './types/TransactionStep';
 import { createDeployContractStep } from './types/DeployContractStep';
 import { createCheckBalanceStep } from './types/CheckBalanceStep';
 import { createCheckTokenBalanceStep } from './types/CheckTokenBalanceStep';
+import { createWaitStep } from './types/WaitStep';
 
 // Clears all simulation data from steps (status, trace, result)
 export const clearAllSteps = (steps: Step[]): Step[] => {
@@ -94,7 +95,7 @@ export const updateStep = (
   index: number,
   stepData: {
     name: string;
-    type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance';
+    type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | 'wait';
     value?: string;
     from?: string;
     to?: string;
@@ -105,6 +106,7 @@ export const updateStep = (
     deploymentBytecode?: string;
     token?: string;
     address?: string;
+    seconds?: string;
   }
 ): TestCase => {
   if (!testCase) return testCase;
@@ -164,6 +166,12 @@ export const updateStep = (
         stepData.name,
         stepData.token || '',
         stepData.address || ''
+      );
+      break;
+    case 'wait':
+      updatedStep = createWaitStep(
+        stepData.name,
+        stepData.seconds || '0'
       );
       break;
     default:

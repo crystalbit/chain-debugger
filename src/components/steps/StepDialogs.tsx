@@ -16,9 +16,11 @@ import {
   VerifiedUser as ApproveIcon,
   Code as DeployContractIcon,
   AccountBalanceWallet as CheckBalanceIcon,
-  Token as CheckTokenBalanceIcon
+  Token as CheckTokenBalanceIcon,
+  TimerOutlined as WaitIcon
 } from '@mui/icons-material';
 import { Step } from '../../types';
+import { formatSeconds } from '../../utils/time';
 
 interface EditFormState {
   name: string;
@@ -32,6 +34,7 @@ interface EditFormState {
   arguments: string;
   deploymentBytecode: string;
   token: string;
+  seconds: string;
 }
 
 interface EditDialogProps {
@@ -41,7 +44,7 @@ interface EditDialogProps {
   editForm: EditFormState;
   setEditForm: React.Dispatch<React.SetStateAction<EditFormState>>;
   onSave: () => void;
-  newStepType: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | null;
+  newStepType: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | 'wait' | null;
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
@@ -212,6 +215,18 @@ export const EditDialog: React.FC<EditDialogProps> = ({
               />
             </>
           )}
+          {stepType === 'wait' && (
+            <>
+              <TextField
+                label="Seconds"
+                value={editForm.seconds}
+                onChange={(e) => setEditForm(prev => ({ ...prev, seconds: e.target.value }))}
+                fullWidth
+                type="number"
+                helperText={editForm.seconds ? `Equivalent to: ${formatSeconds(editForm.seconds)}` : 'Enter time in seconds'}
+              />
+            </>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
@@ -266,7 +281,7 @@ export const DeleteDialog: React.FC<DeleteDialogProps> = ({
 interface ConvertDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelectType: (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance') => void;
+  onSelectType: (type: 'set_balance' | 'transfer' | 'approve' | 'transaction' | 'deploy_contract' | 'check_balance' | 'check_token_balance' | 'wait') => void;
 }
 
 export const ConvertDialog: React.FC<ConvertDialogProps> = ({
@@ -335,6 +350,13 @@ export const ConvertDialog: React.FC<ConvertDialogProps> = ({
             startIcon={<CheckTokenBalanceIcon />}
           >
             Check Token Balance
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => onSelectType('wait')}
+            startIcon={<WaitIcon />}
+          >
+            Wait
           </Button>
         </Box>
       </DialogContent>

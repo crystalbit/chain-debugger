@@ -5,4 +5,5 @@ export * from './ApproveStep';
 export * from './TransactionStep';
 export * from './DeployContractStep';
 export * from './CheckBalanceStep';
-export * from './CheckTokenBalanceStep'; 
+export * from './CheckTokenBalanceStep';
+export * from './WaitStep'; 

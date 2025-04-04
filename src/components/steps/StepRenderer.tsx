@@ -25,7 +25,8 @@ import {
   TransactionStepRenderer,
   DeployContractStepRenderer,
   CheckBalanceStepRenderer,
-  CheckTokenBalanceStepRenderer
+  CheckTokenBalanceStepRenderer,
+  WaitStepRenderer
 } from './types';
 
 interface StepRendererProps {
@@ -78,6 +79,8 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
         return <CheckBalanceStepRenderer step={step} />;
       case 'check_token_balance':
         return <CheckTokenBalanceStepRenderer step={step} />;
+      case 'wait':
+        return <WaitStepRenderer step={step} />;
       default:
         return <Typography variant="body2">Unknown step type</Typography>;
     }

@@ -16,6 +16,7 @@ import {
   deployContractStepHandler,
   checkBalanceStepHandler,
   checkTokenBalanceStepHandler,
+  waitStepHandler,
   StepHandler,
   updateStepStatus
 } from "./steps";
@@ -28,7 +29,8 @@ const handlers: Array<StepHandler<any>> = [
   setBalanceStepHandler,
   deployContractStepHandler,
   checkBalanceStepHandler,
-  checkTokenBalanceStepHandler
+  checkTokenBalanceStepHandler,
+  waitStepHandler
 ];
 
 const setEnvironment = async (rpcUrl: string) => {
